@@ -221,7 +221,7 @@ canvas{display:block;touch-action:manipulation}
 <!-- لابی اتاق آنلاین -->
 <div class="overlay hd" id="lobby-screen">
 <div class="logo" style="font-size:24px">🌐 اتاق آنلاین منچ</div>
-<div class="sub">لینک دعوت یا کد اتاق را برای دوستت در بله بفرست؛ با بازگشت به بازی همین میز باز می‌ماند:</div>
+<div class="sub">لینک دعوت یا کد اتاق را برای دوستت در بله بفرست:</div>
 <div class="box">
 <div style="font-size:11px;color:#a1a1aa;text-align:center">کد اتاق</div>
 <div class="room-big" id="lobby-code">----</div>
@@ -469,7 +469,6 @@ const YARD_SPOTS=[
 [[10.8,1.8],[10.8,3.6],[12.6,1.8],[12.6,3.6]]
 ];
 
-// ۸ خانه امن: ۴ خانه شروع رنگی (0, 13, 26, 39) + ۴ خانه ستاره‌دار (8, 21, 34, 47)
 const STAR_CELLS=[8,21,34,47];
 const SAFE_CELLS=[0,8,13,21,26,34,39,47];
 
@@ -486,20 +485,8 @@ let isAnimating=false;
 let animHopOffset=0,animatingSlot=-1,animatingIdx=-1;
 let isPushing=false,pendingPush=false;
 
-function saveActiveRoom(code){
-if(code)localStorage.setItem("pl_active_room",JSON.stringify({code,ts:Date.now()}));
-else localStorage.removeItem("pl_active_room");
-}
-function getSavedRoom(){
-try{
-const raw=localStorage.getItem("pl_active_room");
-if(!raw)return "";
-const obj=JSON.parse(raw);
-if(obj&&obj.code&&(Date.now()-obj.ts)<1800000)return obj.code;
-saveActiveRoom("");
-}catch(e){}
-return "";
-}
+// پاک کردن دائمی حافظه بازی قبلی تا هنگام بستن و باز کردن مجدد مینی‌اپ، همیشه از منوی اصلی شروع شود
+localStorage.removeItem("pl_active_room");
 
 function setSpeed(m){
 speedMode=m;
@@ -544,7 +531,6 @@ players
 }
 
 function startLocal(mode){
-saveActiveRoom("");
 gameMode=mode;
 clearInterval(pollTimer);
 isAnimating=false;
@@ -566,7 +552,6 @@ const code=String(Math.floor(1000+Math.random()*9000));
 roomCode=code;
 gameMode="online";
 mySlot=2;
-saveActiveRoom(code);
 state=buildState([{slot:2,id:usr.id,name:usr.name,photo:usr.photo,isBot:false}]);
 state.status="lobby";
 await pushState();
@@ -579,16 +564,22 @@ if(c.length!==4){toast("کد ۴ رقمی را وارد کن!");return}
 joinOnlineRoom(c,false);
 }
 
-async function joinOnlineRoom(code,silent=false){
-if(!silent)toast("در حال اتصال به اتاق "+code+"...");
+async function joinOnlineRoom(code,fromInviteLink=false){
+if(!fromInviteLink)toast("در حال اتصال به اتاق "+code+"...");
 try{
 const r=await fetch(DB_URL+code+".json?t="+Date.now(),{cache:"no-store"});
-if(!r.ok){saveActiveRoom("");if(!silent)toast("اتاقی با این کد پیدا نشد!");return}
+if(!r.ok){if(!fromInviteLink)toast("اتاقی با این کد پیدا نشد!");return}
 const d=await r.json();
-if(!d||!d.players||d.status==="win"){saveActiveRoom("");if(!silent)toast("این اتاق به پایان رسیده است!");return}
+if(!d||!d.players||d.status==="win"||d.status==="closed"){
+if(!fromInviteLink)toast("این اتاق بسته شده یا به پایان رسیده است!");
+return;
+}
+// اگر کاربر با همان لینک دعوت قدیمی دوباره وارد ربات شده و بازی قبلاً شروع یا تمام شده، وارد بازی قدیمی نشود و منو باز بماند
+if(fromInviteLink&&d.status!=="lobby"){
+return;
+}
 roomCode=code;
 gameMode="online";
-saveActiveRoom(code);
 const ex=d.players.find(p=>p.active&&p.id===usr.id);
 if(ex){
 mySlot=ex.slot;
@@ -598,7 +589,7 @@ if(d.lastMove)lastMoveId=d.lastMove.id||0;
 }else{
 const order=[2,0,3,1];
 const free=order.find(s=>!d.players[s].active);
-if(free===undefined){saveActiveRoom("");if(!silent)toast("ظرفیت این اتاق تکمیل است!");return}
+if(free===undefined){if(!fromInviteLink)toast("ظرفیت این اتاق تکمیل است!");return}
 mySlot=free;
 d.players[free].active=true;
 d.players[free].id=usr.id;
@@ -616,14 +607,13 @@ turnDeadline=Date.now()+15000;
 updateUI();
 startPoll();
 }
-}catch(e){if(!silent)toast("خطا در اتصال به سرور!")}
+}catch(e){if(!fromInviteLink)toast("خطا در اتصال به سرور!")}
 }
 
 async function pushState(){
 if(gameMode!=="online"||!roomCode||!state)return;
 state.rev=(state.rev||0)+1;
 lastRev=state.rev;
-saveActiveRoom(roomCode);
 if(isPushing){pendingPush=true;return}
 isPushing=true;
 try{
@@ -673,16 +663,18 @@ playTurnChime();
 updateUI();
 }
 
-function leaveLobby(){
+async function leaveLobby(){
 clearInterval(pollTimer);
-saveActiveRoom("");
+if(state&&roomCode){
+state.status="closed";
+await pushState();
+}
 roomCode="";
 state=null;
 document.getElementById("lobby-screen").classList.add("hd");
 document.getElementById("menu-screen").classList.remove("hd");
 }
 
-// پخش انیمیشن حرکت حریف روی گوشی ما تا مهره جهشی نرود!
 function playRemoteMoveAnim(newState,prevTurn){
 const mv=newState.lastMove;
 lastMoveId=mv.id;
@@ -737,6 +729,15 @@ const r=await fetch(DB_URL+roomCode+".json?t="+Date.now(),{cache:"no-store"});
 if(!r.ok)return;
 const d=await r.json();
 if(d&&d.rev&&d.rev>lastRev&&!isAnimating&&!isPushing){
+if(d.status==="closed"){
+clearInterval(pollTimer);
+roomCode="";
+state=null;
+document.getElementById("lobby-screen").classList.add("hd");
+document.getElementById("menu-screen").classList.remove("hd");
+toast("میزبان اتاق را بست!");
+return;
+}
 const prevTurn=state?state.turn:-1;
 const prevDice=state?state.dice:0;
 lastRev=d.rev;
@@ -767,7 +768,6 @@ return `🎲 بیا با هم منچ آنلاین بزنیم!\n🔑 کد اتا�
 }
 
 function inviteFriend(){
-saveActiveRoom(roomCode);
 const link=BOT_LINK+"?startapp="+roomCode;
 const txt=getInviteText();
 const url=`https://ble.ir/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(txt)}`;
@@ -777,7 +777,6 @@ else window.open(url,"_blank");
 }
 
 function copyInvite(){
-saveActiveRoom(roomCode);
 const txt=getInviteText();
 if(navigator.clipboard&&navigator.clipboard.writeText){
 navigator.clipboard.writeText(txt).then(()=>toast("متن و کد دعوت کپی شد! ✅")).catch(()=>toast("کد اتاق: "+roomCode));
@@ -995,7 +994,6 @@ state.status="win";
 state.winner=s;
 state.lastMove={id:Date.now(),slot:s,idx,from:oldP,to:newP,dice:d,captured:[]};
 state.msg="🏆 "+p.name+" برنده بازی شد!";
-saveActiveRoom("");
 if((gameMode==="bot"&&s===2)||(gameMode==="online"&&s===mySlot)){
 stars+=10;
 updStarUI();
@@ -1007,7 +1005,6 @@ return;
 }
 }else if(newP>=0&&newP<=50){
 const g=globalIdx(s,newP);
-// بررسی دقیق خانه امن (ستاره‌دار و خانه‌های شروع رنگی)
 if(!isSafeGlobalCell(g)){
 for(let o=0;o<4;o++){
 if(o===s||!state.players[o].active)continue;
@@ -1100,7 +1097,6 @@ btn.classList.toggle("disabled",!(canAct&&state.phase==="roll"));
 
 if(state.status==="win"){
 clearInterval(pollTimer);
-saveActiveRoom("");
 document.getElementById("win-txt").innerText=state.msg;
 document.getElementById("win-screen").classList.remove("hd");
 }else if(state.status==="play"&&state.players[state.turn].isBot&&state.phase==="roll"&&!isAnimating){
@@ -1120,9 +1116,12 @@ function confirmExit(){
 if(!state){backToMenu();return}
 if(confirm("از بازی خارج می‌شوید؟"))backToMenu();
 }
-function backToMenu(){
+async function backToMenu(){
 clearInterval(pollTimer);
-saveActiveRoom("");
+if(gameMode==="online"&&state&&roomCode){
+state.status="closed";
+await pushState();
+}
 isAnimating=false;
 roomCode="";
 state=null;
@@ -1300,7 +1299,6 @@ ctx.closePath();
 ctx.fill();
 }
 
-// شمارش تعداد مهره‌ها روی هر خانه برای چیدمان مرتب در خانه‌های امن
 const cellTotals={};
 const allItems=[];
 for(let s=0;s<4;s++){
@@ -1372,11 +1370,9 @@ ctx.strokeStyle="#38bdf8";ctx.lineWidth=2;ctx.beginPath();ctx.arc(tx,ty,rad*0.9,
 }
 requestAnimationFrame(drawBoard);
 
-const savedRoom=getSavedRoom();
+// فقط در صورتی وارد اتاق می‌شود که کاربر روی لینک دعوت یک اتاق در انتظار (lobby) کلیک کرده باشد
 if(startParam&&/^\d{4}$/.test(startParam)){
-joinOnlineRoom(startParam,false);
-}else if(savedRoom&&/^\d{4}$/.test(savedRoom)){
-joinOnlineRoom(savedRoom,true);
+joinOnlineRoom(startParam,true);
 }
 </script>
 </body>
