@@ -16,7 +16,7 @@ html,body{width:100%;height:100%;background:#1e1e1e;color:#fff;overflow:hidden}
 .items-pill{background:#171717;border:1px solid #333;border-radius:20px;padding:6px 16px;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:900;letter-spacing:.5px;color:#fff;cursor:pointer}
 .items-pill:active{transform:scale(.95)}
 
-/* ردیف بازیکنان بالا و پایین تخته - تراز دقیق با حیاط‌های چپ و راست */
+/* ردیف بازیکنان بالا و پایین تخته */
 .p-strip{display:flex;justify-content:space-between;align-items:flex-start;padding:2px 16px;min-height:66px;direction:ltr}
 .p-slot{display:flex;flex-direction:column;align-items:center;width:130px;position:relative;transition:.2s}
 .p-slot.off{opacity:.25;filter:grayscale(1)}
@@ -43,14 +43,17 @@ html,body{width:100%;height:100%;background:#1e1e1e;color:#fff;overflow:hidden}
 .board-frame{background:#ffffff;padding:8px;border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.5)}
 canvas{display:block;touch-action:manipulation}
 
-/* وضعیت نوبت و تاس */
-.status-row{display:flex;align-items:center;justify-content:center;gap:12px;padding:4px 14px;min-height:56px}
+/* وضعیت نوبت و تاس گرافیکی پلاتو */
+.status-row{display:flex;align-items:center;justify-content:center;gap:14px;padding:4px 14px;min-height:58px}
 .status-txt{font-size:13px;font-weight:700;color:#e5e5e5;text-align:center}
-.dice-btn{width:50px;height:50px;border-radius:13px;background:linear-gradient(145deg,#ffffff,#e2e8f0);border:3px solid #38bdf8;color:#111;font-size:28px;display:flex;justify-content:center;align-items:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.4);transition:.15s;flex-shrink:0}
-.dice-btn:active{transform:scale(.9)}
-.dice-btn.disabled{opacity:.42;pointer-events:none;border-color:#525252}
-.dice-btn.roll{animation:diceSpin .14s infinite alternate}
-@keyframes diceSpin{0%{transform:rotate(-16deg) scale(1.12)}100%{transform:rotate(16deg) scale(1.12)}}
+.dice-btn{width:46px;height:46px;border-radius:11px;background:#ffffff;border:none;padding:6px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);place-items:center;cursor:pointer;box-shadow:0 4px 0 #cbd5e1,0 6px 14px rgba(0,0,0,.45);transition:transform .12s;flex-shrink:0}
+.dice-btn:active{transform:scale(.92)}
+.dice-btn.disabled{opacity:.45;pointer-events:none}
+.dice-btn.roll{animation:dicePlatoRoll .12s infinite alternate}
+@keyframes dicePlatoRoll{0%{transform:rotate(-22deg) scale(1.14)}100%{transform:rotate(22deg) scale(1.14)}}
+.pip{width:7px;height:7px;border-radius:50%;background:#1e293b;opacity:0}
+.pip.on{opacity:1}
+.pip.red{background:#dc2626}
 
 /* نوار چت پایین */
 .chat-bar{height:48px;background:#1a1a1a;border-top:1px solid #333;padding:0 12px;display:flex;align-items:center;gap:10px}
@@ -80,6 +83,7 @@ canvas{display:block;touch-action:manipulation}
 .btn:active{transform:scale(.97)}
 .btn-green{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff}
 .btn-blue{background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff}
+.btn-amber{background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff}
 .btn-ghost{background:#3f3f46;color:#fff;font-size:13px}
 .join-row{display:flex;gap:8px}
 .code-inp{flex:1;background:#18181b;border:1.5px solid #3f3f46;border-radius:10px;padding:10px;color:#fff;font-size:15px;font-weight:900;text-align:center;letter-spacing:3px;outline:none}
@@ -104,7 +108,7 @@ canvas{display:block;touch-action:manipulation}
 <button class="circle-btn" id="btn-snd" onclick="toggleSound()">🔊</button>
 </div>
 
-<!-- بازیکنان بالا: چپ=زرد (slot 0)، راست=آبی (slot 1) -->
+<!-- بازیکنان بالا -->
 <div class="p-strip">
 <div class="p-slot" id="pslot-0">
 <div class="p-name-row"><span class="dot-on"></span><span class="p-name-txt" id="pname-0">زرد</span></div>
@@ -132,7 +136,7 @@ canvas{display:block;touch-action:manipulation}
 </div>
 </div>
 
-<!-- بازیکنان پایین: چپ=سبز (slot 3)، راست=قرمز (slot 2) -->
+<!-- بازیکنان پایین -->
 <div class="p-strip">
 <div class="p-slot" id="pslot-3">
 <div class="timer-bar"><div class="timer-fill" id="tfill-3"></div></div>
@@ -153,10 +157,14 @@ canvas{display:block;touch-action:manipulation}
 </div>
 </div>
 
-<!-- وضعیت نوبت و دکمه تاس -->
+<!-- وضعیت نوبت و تاس واقعی ۹ نقطه‌ای پلاتو -->
 <div class="status-row">
 <div class="status-txt" id="status-txt">آماده شروع بازی</div>
-<button class="dice-btn" id="dice-btn" onclick="onDiceClick()">🎲</button>
+<button class="dice-btn" id="dice-btn" onclick="onDiceClick()">
+<span class="pip" id="dp-0"></span><span class="pip" id="dp-1"></span><span class="pip" id="dp-2"></span>
+<span class="pip" id="dp-3"></span><span class="pip on" id="dp-4"></span><span class="pip" id="dp-5"></span>
+<span class="pip" id="dp-6"></span><span class="pip" id="dp-7"></span><span class="pip" id="dp-8"></span>
+</button>
 </div>
 
 <!-- پیام‌های سریع -->
@@ -213,15 +221,16 @@ canvas{display:block;touch-action:manipulation}
 <!-- لابی اتاق آنلاین -->
 <div class="overlay hd" id="lobby-screen">
 <div class="logo" style="font-size:24px">🌐 اتاق آنلاین منچ</div>
-<div class="sub">لینک دعوت را برای دوستت در بله بفرست تا وارد میز شود:</div>
+<div class="sub">لینک دعوت یا کد اتاق را برای دوستت در بله بفرست؛ با بازگشت به بازی همین میز باز می‌ماند:</div>
 <div class="box">
 <div style="font-size:11px;color:#a1a1aa;text-align:center">کد اتاق</div>
 <div class="room-big" id="lobby-code">----</div>
 <div id="lobby-list"></div>
 </div>
 <button class="btn btn-blue" onclick="inviteFriend()">📤 ارسال لینک دعوت به دوست در بله</button>
+<button class="btn btn-amber" onclick="copyInvite()">📋 کپی متن و کد دعوت</button>
 <button class="btn btn-green hd" id="btn-start-online" onclick="hostStartGame()">▶️ شروع بازی</button>
-<button class="btn btn-ghost" onclick="leaveLobby()">بازگشت</button>
+<button class="btn btn-ghost" onclick="leaveLobby()">❌ بستن اتاق و بازگشت</button>
 </div>
 
 <!-- فروشگاه آیتم‌ها -->
@@ -247,7 +256,6 @@ const DB_URL="https://kido-db.mohammadahmadi0007.workers.dev/plato_ludo_";
 const BOT_LINK="https://ble.ir/ludo_gamee_bot";
 const CHANNEL_ID="@gamee_balee";
 const CHANNEL_URL="https://ble.ir/gamee_balee";
-const DICE_FACES=["🎲","⚀","⚁","⚂","⚃","⚄","⚅"];
 
 function openChannel(){
 if(window.Bale&&Bale.WebApp&&Bale.WebApp.openLink)Bale.WebApp.openLink(CHANNEL_URL);
@@ -277,22 +285,118 @@ if(u&&u.id){usr.id="b_"+u.id;usr.name=[u.first_name,u.last_name].filter(Boolean)
 }
 }catch(e){}
 
-function toast(m){const t=document.getElementById("toast");t.innerText=m;t.style.opacity="1";setTimeout(()=>t.style.opacity="0",2100)}
+function toast(m){const t=document.getElementById("toast");t.innerText=m;t.style.opacity="1";setTimeout(()=>t.style.opacity="0",2200)}
 
+// --- موتور افکت‌های صوتی پلاتو (Web Audio API) ---
 let snd=true,ac=null;
-function beep(f,d,t="sine",v=0.11){
-if(!snd||document.hidden)return;
+function ensureAudio(){
+if(!snd||document.hidden)return null;
 try{
 if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)();
 if(ac.state==="suspended")ac.resume().catch(()=>{});
-const o=ac.createOscillator(),g=ac.createGain();
-o.type=t;o.frequency.value=f;
-g.gain.setValueAtTime(v,ac.currentTime);
-g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);
-o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d);
-}catch(e){}
+return ac;
+}catch(e){return null}
 }
 function toggleSound(){snd=!snd;document.getElementById("btn-snd").innerText=snd?"🔊":"🔇"}
+
+// صدای ریختن تاس روی تخته چوبی (ضربه‌های سبک پلاستیک روی چوب)
+function playDiceKnock(pitch=1){
+const ctxA=ensureAudio();if(!ctxA)return;
+const t=ctxA.currentTime;
+const o=ctxA.createOscillator(),g=ctxA.createGain();
+o.type="triangle";
+o.frequency.setValueAtTime(340*pitch,t);
+o.frequency.exponentialRampToValueAtTime(110*pitch,t+0.045);
+g.gain.setValueAtTime(0.16,t);
+g.gain.exponentialRampToValueAtTime(0.001,t+0.048);
+o.connect(g);g.connect(ctxA.destination);
+o.start(t);o.stop(t+0.05);
+}
+
+// صدای حرکت مهره روی هر خانه (پاپ چوبی نرم مثل پلاتو)
+function playStepPop(stepIdx=0){
+const ctxA=ensureAudio();if(!ctxA)return;
+const t=ctxA.currentTime;
+const o=ctxA.createOscillator(),g=ctxA.createGain();
+o.type="sine";
+const baseF=460+Math.min(stepIdx,6)*28;
+o.frequency.setValueAtTime(baseF,t);
+o.frequency.exponentialRampToValueAtTime(baseF*1.38,t+0.032);
+o.frequency.exponentialRampToValueAtTime(baseF*0.85,t+0.068);
+g.gain.setValueAtTime(0.15,t);
+g.gain.exponentialRampToValueAtTime(0.001,t+0.072);
+o.connect(g);g.connect(ctxA.destination);
+o.start(t);o.stop(t+0.075);
+}
+
+// صدای زنگ تغییر نوبت پلاتو (دو نت نرم B5 -> E6)
+function playTurnChime(){
+const ctxA=ensureAudio();if(!ctxA)return;
+const t=ctxA.currentTime;
+[987.77,1318.51].forEach((freq,idx)=>{
+const o=ctxA.createOscillator(),g=ctxA.createGain();
+o.type="sine";
+const st=t+idx*0.075;
+o.frequency.setValueAtTime(freq,st);
+g.gain.setValueAtTime(0.001,st);
+g.gain.linearRampToValueAtTime(0.09,st+0.012);
+g.gain.exponentialRampToValueAtTime(0.001,st+0.22);
+o.connect(g);g.connect(ctxA.destination);
+o.start(st);o.stop(st+0.23);
+});
+}
+
+// صدای بیرون آمدن با ۶ یا رسیدن به خانه امن
+function playSixSound(){
+const ctxA=ensureAudio();if(!ctxA)return;
+const t=ctxA.currentTime;
+[587.33,783.99,1046.5].forEach((freq,idx)=>{
+const o=ctxA.createOscillator(),g=ctxA.createGain();
+o.type="triangle";
+const st=t+idx*0.055;
+o.frequency.setValueAtTime(freq,st);
+g.gain.setValueAtTime(0.11,st);
+g.gain.exponentialRampToValueAtTime(0.001,st+0.18);
+o.connect(g);g.connect(ctxA.destination);
+o.start(st);o.stop(st+0.19);
+});
+}
+
+// صدای زدن مهره حریف
+function playCaptureSound(){
+const ctxA=ensureAudio();if(!ctxA)return;
+const t=ctxA.currentTime;
+const o=ctxA.createOscillator(),g=ctxA.createGain();
+o.type="sawtooth";
+o.frequency.setValueAtTime(420,t);
+o.frequency.exponentialRampToValueAtTime(95,t+0.24);
+g.gain.setValueAtTime(0.16,t);
+g.gain.exponentialRampToValueAtTime(0.001,t+0.25);
+o.connect(g);g.connect(ctxA.destination);
+o.start(t);o.stop(t+0.26);
+}
+
+// رسم نقطه‌های تاس سفید واقعی پلاتو (۱ تا ۶)
+const PIP_MAP={
+0:[4],
+1:[4],
+2:[2,6],
+3:[2,4,6],
+4:[0,2,6,8],
+5:[0,2,4,6,8],
+6:[0,2,3,5,6,8]
+};
+function renderDicePips(val){
+const active=PIP_MAP[val]||[4];
+const isRed=(val===1||val===4);
+for(let i=0;i<9;i++){
+const el=document.getElementById("dp-"+i);
+if(!el)continue;
+const on=active.includes(i);
+el.classList.toggle("on",on);
+el.classList.toggle("red",on&&isRed);
+}
+}
 
 // فروشگاه آیتم‌ها
 let stars=parseInt(localStorage.getItem("pl_stars")||"0",10);
@@ -327,16 +431,14 @@ document.getElementById("items-screen").classList.remove("hd");
 }
 function closeItems(){document.getElementById("items-screen").classList.add("hd")}
 function buyTheme(i){
-if(ownedThemes.includes(i)){curTheme=i;localStorage.setItem("pl_theme",i);beep(620,.08);openItems();toast("طرح "+THEMES[i].name+" فعال شد!")}
+if(ownedThemes.includes(i)){curTheme=i;localStorage.setItem("pl_theme",i);playStepPop(3);openItems();toast("طرح "+THEMES[i].name+" فعال شد!")}
 else if(stars>=THEMES[i].cost){
 stars-=THEMES[i].cost;ownedThemes.push(i);curTheme=i;
 localStorage.setItem("pl_themes",JSON.stringify(ownedThemes));localStorage.setItem("pl_theme",i);
-beep(820,.14);openItems();toast("طرح "+THEMES[i].name+" خریداری شد!");
+playSixSound();openItems();toast("طرح "+THEMES[i].name+" خریداری شد!");
 }else toast("ستاره کافی نداری! با بردن بازی ستاره بگیر ⭐");
 }
 
-// چیدمان رنگ‌ها:
-// slot 0: زرد (بالا-چپ) | slot 1: آبی (بالا-راست) | slot 2: قرمز (پایین-راست) | slot 3: سبز (پایین-چپ)
 const SLOTS=[
 {name:"زرد",col:"#facc15",inner:"#f59e0b",ring:"#eab308",startIdx:0},
 {name:"آبی",col:"#2563eb",inner:"#1d4ed8",ring:"#2563eb",startIdx:13},
@@ -360,17 +462,17 @@ const MAIN_PATH=[
 ];
 
 const HOME_PATHS=[
-[[7,1],[7,2],[7,3],[7,4],[7,5],[7,6]],     // زرد
-[[1,7],[2,7],[3,7],[4,7],[5,7],[6,7]],     // آبی
-[[7,13],[7,12],[7,11],[7,10],[7,9],[7,8]], // قرمز
-[[13,7],[12,7],[11,7],[10,7],[9,7],[8,7]]  // سبز
+[[7,1],[7,2],[7,3],[7,4],[7,5],[7,6]],
+[[1,7],[2,7],[3,7],[4,7],[5,7],[6,7]],
+[[7,13],[7,12],[7,11],[7,10],[7,9],[7,8]],
+[[13,7],[12,7],[11,7],[10,7],[9,7],[8,7]]
 ];
 
 const YARD_SPOTS=[
-[[1.8,1.8],[1.8,3.6],[3.6,1.8],[3.6,3.6]],       // زرد (بالا-چپ)
-[[1.8,10.8],[1.8,12.6],[3.6,10.8],[3.6,12.6]],   // آبی (بالا-راست)
-[[10.8,10.8],[10.8,12.6],[12.6,10.8],[12.6,12.6]], // قرمز (پایین-راست)
-[[10.8,1.8],[10.8,3.6],[12.6,1.8],[12.6,3.6]]    // سبز (پایین-چپ)
+[[1.8,1.8],[1.8,3.6],[3.6,1.8],[3.6,3.6]],
+[[1.8,10.8],[1.8,12.6],[3.6,10.8],[3.6,12.6]],
+[[10.8,10.8],[10.8,12.6],[12.6,10.8],[12.6,12.6]],
+[[10.8,1.8],[10.8,3.6],[12.6,1.8],[12.6,3.6]]
 ];
 
 const SAFE_CELLS=[0,8,13,21,26,34,39,47];
@@ -379,8 +481,23 @@ let speedMode="fast";
 let gameMode="none";
 let roomCode="",mySlot=2,pollTimer=null,lastRev=0;
 let state=null,movableTokens=[],turnDeadline=0;
-let isAnimating=false; // قفل هنگام چرخش تاس یا حرکت پلکانی مهره
-let animHopOffset=0;   // افکت پرش مهره هنگام حرکت خانه به خانه
+let isAnimating=false;
+let animHopOffset=0;
+
+function saveActiveRoom(code){
+if(code)localStorage.setItem("pl_active_room",JSON.stringify({code,ts:Date.now()}));
+else localStorage.removeItem("pl_active_room");
+}
+function getSavedRoom(){
+try{
+const raw=localStorage.getItem("pl_active_room");
+if(!raw)return "";
+const obj=JSON.parse(raw);
+if(obj&&obj.code&&(Date.now()-obj.ts)<1800000)return obj.code;
+saveActiveRoom("");
+}catch(e){}
+return "";
+}
 
 function setSpeed(m){
 speedMode=m;
@@ -423,6 +540,7 @@ players
 }
 
 function startLocal(mode){
+saveActiveRoom("");
 gameMode=mode;
 clearInterval(pollTimer);
 isAnimating=false;
@@ -434,6 +552,7 @@ state=buildState(plist);
 turnDeadline=Date.now()+15000;
 document.getElementById("menu-screen").classList.add("hd");
 document.getElementById("win-screen").classList.add("hd");
+playTurnChime();
 updateUI();
 }
 
@@ -443,6 +562,7 @@ const code=String(Math.floor(1000+Math.random()*9000));
 roomCode=code;
 gameMode="online";
 mySlot=2;
+saveActiveRoom(code);
 state=buildState([{slot:2,id:usr.id,name:usr.name,photo:usr.photo,isBot:false}]);
 state.status="lobby";
 await pushState();
@@ -452,26 +572,28 @@ openLobby();
 function joinByCode(){
 const c=document.getElementById("room-inp").value.trim();
 if(c.length!==4){toast("کد ۴ رقمی را وارد کن!");return}
-joinOnlineRoom(c);
+joinOnlineRoom(c,false);
 }
 
-async function joinOnlineRoom(code){
-toast("در حال اتصال به اتاق "+code+"...");
+async function joinOnlineRoom(code,silent=false){
+if(!silent)toast("در حال اتصال به اتاق "+code+"...");
 try{
 const r=await fetch(DB_URL+code+".json");
-if(!r.ok){toast("اتاقی با این کد پیدا نشد!");return}
+if(!r.ok){saveActiveRoom("");if(!silent)toast("اتاقی با این کد پیدا نشد!");return}
 const d=await r.json();
-if(!d||!d.players){toast("اتاق نامعتبر است!");return}
+if(!d||!d.players||d.status==="win"){saveActiveRoom("");if(!silent)toast("این اتاق به پایان رسیده است!");return}
 roomCode=code;
 gameMode="online";
+saveActiveRoom(code);
 const ex=d.players.find(p=>p.active&&p.id===usr.id);
 if(ex){
 mySlot=ex.slot;
 state=d;
+lastRev=d.rev||1;
 }else{
 const order=[2,0,3,1];
 const free=order.find(s=>!d.players[s].active);
-if(free===undefined){toast("ظرفیت این اتاق تکمیل است!");return}
+if(free===undefined){saveActiveRoom("");if(!silent)toast("ظرفیت این اتاق تکمیل است!");return}
 mySlot=free;
 d.players[free].active=true;
 d.players[free].id=usr.id;
@@ -489,13 +611,14 @@ turnDeadline=Date.now()+15000;
 updateUI();
 startPoll();
 }
-}catch(e){toast("خطا در اتصال به سرور!")}
+}catch(e){if(!silent)toast("خطا در اتصال به سرور!")}
 }
 
 async function pushState(){
 if(gameMode!=="online"||!roomCode||!state)return;
 state.rev=(state.rev||0)+1;
 lastRev=state.rev;
+saveActiveRoom(roomCode);
 try{
 await fetch(DB_URL+roomCode+".json",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(state)});
 }catch(e){}
@@ -531,11 +654,15 @@ state.msg="نوبت "+state.players[2].name+" است؛ تاس بینداز!";
 await pushState();
 document.getElementById("lobby-screen").classList.add("hd");
 turnDeadline=Date.now()+15000;
+playTurnChime();
 updateUI();
 }
 
 function leaveLobby(){
 clearInterval(pollTimer);
+saveActiveRoom("");
+roomCode="";
+state=null;
 document.getElementById("lobby-screen").classList.add("hd");
 document.getElementById("menu-screen").classList.remove("hd");
 }
@@ -550,12 +677,14 @@ const r=await fetch(DB_URL+roomCode+".json");
 if(!r.ok)return;
 const d=await r.json();
 if(d&&d.rev&&d.rev>lastRev){
+const prevTurn=state?state.turn:-1;
 lastRev=d.rev;
 state=d;
 if(state.status==="lobby")renderLobby();
 else{
 document.getElementById("lobby-screen").classList.add("hd");
 turnDeadline=Date.now()+15000;
+if(prevTurn!==state.turn)playTurnChime();
 updateUI();
 }
 }
@@ -563,23 +692,32 @@ updateUI();
 },1000);
 }
 
-function inviteFriend(){
+function getInviteText(){
 const link=BOT_LINK+"?startapp="+roomCode;
-const txt=`🎲 بیا با هم منچ آنلاین بزنیم!\n🔑 کد اتاق: ${roomCode}\nروی لینک زیر بزن و مستقیم وارد میز بازی شو 👇\n\n🎮 کانال بازی‌های ما: ${CHANNEL_ID}`;
+return `🎲 بیا با هم منچ آنلاین بزنیم!\n🔑 کد اتاق: ${roomCode}\nوارد بازوی @ludo_gamee_bot شو و کد ${roomCode} رو بزن یا روی لینک زیر کلیک کن 👇\n${link}`;
+}
+
+function inviteFriend(){
+saveActiveRoom(roomCode);
+const link=BOT_LINK+"?startapp="+roomCode;
+const txt=getInviteText();
 const url=`https://ble.ir/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(txt)}`;
 if(window.Bale&&Bale.WebApp&&Bale.WebApp.openLink)Bale.WebApp.openLink(url);
 else if(navigator.share)navigator.share({title:"منچ آنلاین",text:txt,url:link}).catch(()=>{});
 else window.open(url,"_blank");
 }
 
-// --- چت سریع و حباب گفتگو ---
-function toggleQuickChat(){
-document.getElementById("quick-pop").classList.toggle("hd");
+function copyInvite(){
+saveActiveRoom(roomCode);
+const txt=getInviteText();
+if(navigator.clipboard&&navigator.clipboard.writeText){
+navigator.clipboard.writeText(txt).then(()=>toast("متن و کد دعوت کپی شد! ✅")).catch(()=>toast("کد اتاق: "+roomCode));
+}else toast("کد اتاق: "+roomCode);
 }
-function sendQuick(txt){
-document.getElementById("quick-pop").classList.add("hd");
-sendBubble(mySlot,txt);
-}
+
+// --- چت سریع ---
+function toggleQuickChat(){document.getElementById("quick-pop").classList.toggle("hd")}
+function sendQuick(txt){document.getElementById("quick-pop").classList.add("hd");sendBubble(mySlot,txt)}
 function sendChatInput(){
 const inp=document.getElementById("chat-inp");
 const txt=inp.value.trim();
@@ -605,7 +743,7 @@ host.appendChild(b);
 setTimeout(()=>{if(b.parentNode)b.remove()},3200);
 }
 
-// --- منطق بازی منچ ---
+// --- منطق بازی منچ مطابق سرعت و افکت صوتی ویدئو ---
 function globalIdx(slot,relPos){
 if(relPos<0||relPos>50)return -1;
 return (SLOTS[slot].startIdx+relPos)%52;
@@ -639,25 +777,26 @@ if(!isMyControl()||state.phase!=="roll")return;
 doRoll();
 }
 
-// انیمیشن چرخش تاس با نمایش اعداد مختلف قبل از توقف
+// سرعت چرخش تاس دقیقاً مطابق ویدئو (~0.55 ثانیه با ضربه‌های تاس روی میز)
 function doRoll(){
 if(isAnimating)return;
 isAnimating=true;
 const btn=document.getElementById("dice-btn");
 btn.classList.add("roll","disabled");
-document.getElementById("status-txt").innerText="در حال چرخش تاس...";
+document.getElementById("status-txt").innerText="در حال پرتاب تاس...";
 
 let ticks=0;
+playDiceKnock(0.95);
 const rollIv=setInterval(()=>{
 ticks++;
 const rndFace=Math.floor(Math.random()*6)+1;
-btn.innerText=DICE_FACES[rndFace];
-beep(420+ticks*45,0.035,"triangle",0.07);
+renderDicePips(rndFace);
+if(ticks%2===0)playDiceKnock(0.85+Math.random()*0.3);
 if(ticks>=8){
 clearInterval(rollIv);
 finishRoll();
 }
-},65);
+},68);
 }
 
 async function finishRoll(){
@@ -665,35 +804,40 @@ const btn=document.getElementById("dice-btn");
 btn.classList.remove("roll");
 const val=Math.floor(Math.random()*6)+1;
 state.dice=val;
-btn.innerText=DICE_FACES[val];
-beep(680,0.08,"sine",0.12);
+renderDicePips(val);
+playDiceKnock(1.18);
 
 const p=state.players[state.turn];
-if(val===6)state.sixCount++;
-else state.sixCount=0;
+if(val===6){
+state.sixCount++;
+setTimeout(playSixSound,90);
+}else{
+state.sixCount=0;
+}
 
 if(state.sixCount>=3){
 state.sixCount=0;
 state.msg=p.name+" سه تا ۶ آورد و سوخت!";
-beep(180,.2,"sawtooth",0.12);
+playCaptureSound();
+setTimeout(async()=>{
 advanceTurn();
 isAnimating=false;
 if(gameMode==="online")await pushState();
 updateUI();
+},650);
 return;
 }
 
 const moves=getValidMoves(state.turn,val);
 if(moves.length===0){
 state.msg=p.name+" عدد "+val+" آورد ولی حرکتی ندارد!";
-beep(240,.14,"sine",0.09);
 updateUI();
 setTimeout(async()=>{
 advanceTurn();
 isAnimating=false;
 if(gameMode==="online")await pushState();
 updateUI();
-},750);
+},700);
 }else{
 state.phase="move";
 state.msg=p.name+" عدد "+val+" آورد؛ مهره را انتخاب کن!";
@@ -701,9 +845,9 @@ isAnimating=false;
 if(gameMode==="online")await pushState();
 updateUI();
 if(p.isBot){
-setTimeout(()=>botMove(moves),480);
+setTimeout(()=>botMove(moves),420);
 }else if(moves.length===1){
-setTimeout(()=>moveToken(moves[0]),340);
+setTimeout(()=>moveToken(moves[0]),320);
 }
 }
 }
@@ -733,7 +877,7 @@ if(sc>best){best=sc;pick=idx}
 moveToken(pick);
 }
 
-// حرکت پلکانی و دونه به دونه مهره روی خانه‌ها
+// سرعت حرکت خانه به خانه دقیقاً مطابق ویدئو (~220ms به ازای هر خانه + پاپ صوتی)
 function moveToken(idx){
 if(!state||state.phase!=="move"||isAnimating)return;
 const s=state.turn;
@@ -746,20 +890,19 @@ movableTokens=[];
 const oldP=p.tokens[idx];
 const targetP=oldP===-1?0:oldP+d;
 
-// اگر مهره از حیاط بیرون می‌آید در ۱ قدم روی خانه شروع می‌نشیند؛ در غیر این صورت دونه به دونه جلو می‌رود
 const steps=oldP===-1?[0]:Array.from({length:d},(_,k)=>oldP+k+1);
 let stepIndex=0;
 
 function stepNext(){
 p.tokens[idx]=steps[stepIndex];
 animHopOffset=1;
-setTimeout(()=>{animHopOffset=0},90);
-beep(520+stepIndex*45,0.055,"triangle",0.11);
+setTimeout(()=>{animHopOffset=0},105);
+playStepPop(stepIndex);
 stepIndex++;
 if(stepIndex<steps.length){
-setTimeout(stepNext,175);
+setTimeout(stepNext,220);
 }else{
-setTimeout(()=>finalizeMove(s,idx,targetP,d),120);
+setTimeout(()=>finalizeMove(s,idx,targetP,d),160);
 }
 }
 stepNext();
@@ -773,11 +916,12 @@ let hit=false;
 if(newP===56){
 p.finished=p.tokens.filter(x=>x===56).length;
 bonus=true;
-beep(880,.18,"sine",0.15);
+playSixSound();
 if(p.finished>=state.goal){
 state.status="win";
 state.winner=s;
 state.msg="🏆 "+p.name+" برنده بازی شد!";
+saveActiveRoom("");
 if((gameMode==="bot"&&s===2)||(gameMode==="online"&&s===mySlot)){
 stars+=10;
 updStarUI();
@@ -805,7 +949,7 @@ bonus=true;
 }
 
 if(hit){
-beep(210,.22,"sawtooth",0.16);
+playCaptureSound();
 if(p.isBot)setTimeout(()=>showBubbleDOM(s,"زدمت! 😂"),250);
 }
 
@@ -813,6 +957,7 @@ if(bonus){
 state.phase="roll";
 state.dice=0;
 state.msg=hit?"💥 "+p.name+" مهره حریف را زد! دوباره تاس بینداز":"🎲 جایزه! دوباره نوبت "+p.name+" است";
+playTurnChime();
 }else{
 state.sixCount=0;
 advanceTurn();
@@ -836,12 +981,13 @@ break;
 }
 state.msg="نوبت "+state.players[state.turn].name+" است؛ تاس بینداز!";
 turnDeadline=Date.now()+15000;
+playTurnChime();
 }
 
 function updateUI(){
 if(!state)return;
 const btn=document.getElementById("dice-btn");
-if(!isAnimating)btn.innerText=DICE_FACES[state.dice||0];
+if(!isAnimating)renderDicePips(state.dice||1);
 
 for(let s=0;s<4;s++){
 const p=state.players[s];
@@ -863,14 +1009,14 @@ document.getElementById("status-txt").innerText=state.msg;
 movableTokens=(state.status==="play"&&state.phase==="move"&&!isAnimating)?getValidMoves(state.turn,state.dice):[];
 const canAct=isMyControl();
 btn.classList.toggle("disabled",!(canAct&&state.phase==="roll"));
-btn.style.borderColor=SLOTS[state.turn].col;
 
 if(state.status==="win"){
 clearInterval(pollTimer);
+saveActiveRoom("");
 document.getElementById("win-txt").innerText=state.msg;
 document.getElementById("win-screen").classList.remove("hd");
 }else if(state.status==="play"&&state.players[state.turn].isBot&&state.phase==="roll"&&!isAnimating){
-setTimeout(doRoll,550);
+setTimeout(doRoll,520);
 }
 }
 
@@ -888,7 +1034,9 @@ if(confirm("از بازی خارج می‌شوید؟"))backToMenu();
 }
 function backToMenu(){
 clearInterval(pollTimer);
+saveActiveRoom("");
 isAnimating=false;
+roomCode="";
 state=null;
 document.getElementById("win-screen").classList.add("hd");
 document.getElementById("lobby-screen").classList.add("hd");
@@ -1079,7 +1227,7 @@ const ox=stIdx===0?0:(stIdx%2===1?-3.2:3.2);
 const oy=stIdx>1?-3.2:0;
 
 const isMov=(state&&s===state.turn&&movableTokens.includes(i)&&isMyControl());
-const hop=(state&&s===state.turn&&isAnimating&&animHopOffset)?-3.5:0;
+const hop=(state&&s===state.turn&&isAnimating&&animHopOffset)?-4.2:0;
 const rad=CELL*0.39+(isMov?pulse*1.8:0);
 const tx=pt.x+ox,ty=pt.y+oy+hop;
 
@@ -1116,8 +1264,11 @@ ctx.strokeStyle="#38bdf8";ctx.lineWidth=2;ctx.beginPath();ctx.arc(tx,ty,rad*0.9,
 }
 requestAnimationFrame(drawBoard);
 
+const savedRoom=getSavedRoom();
 if(startParam&&/^\d{4}$/.test(startParam)){
-joinOnlineRoom(startParam);
+joinOnlineRoom(startParam,false);
+}else if(savedRoom&&/^\d{4}$/.test(savedRoom)){
+joinOnlineRoom(savedRoom,true);
 }
 </script>
 </body>
