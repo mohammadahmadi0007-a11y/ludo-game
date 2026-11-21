@@ -49,7 +49,7 @@ canvas{display:block;touch-action:manipulation}
 .dice-btn{width:46px;height:46px;border-radius:11px;background:#ffffff;border:none;padding:6px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);place-items:center;cursor:pointer;box-shadow:0 4px 0 #cbd5e1,0 6px 14px rgba(0,0,0,.45);transition:transform .12s;flex-shrink:0}
 .dice-btn:active{transform:scale(.92)}
 .dice-btn.disabled{opacity:.45;pointer-events:none}
-.dice-btn.roll{animation:dicePlatoRoll .12s infinite alternate}
+.dice-btn.roll{animation:dicePlatoRoll .1s infinite alternate}
 @keyframes dicePlatoRoll{0%{transform:rotate(-22deg) scale(1.14)}100%{transform:rotate(22deg) scale(1.14)}}
 .pip{width:7px;height:7px;border-radius:50%;background:#1e293b;opacity:0}
 .pip.on{opacity:1}
@@ -287,7 +287,7 @@ if(u&&u.id){usr.id="b_"+u.id;usr.name=[u.first_name,u.last_name].filter(Boolean)
 
 function toast(m){const t=document.getElementById("toast");t.innerText=m;t.style.opacity="1";setTimeout(()=>t.style.opacity="0",2200)}
 
-// --- موتور افکت‌های صوتی پلاتو (Web Audio API) ---
+// --- موتور افکت‌های صوتی پلاتو ---
 let snd=true,ac=null;
 function ensureAudio(){
 if(!snd||document.hidden)return null;
@@ -299,7 +299,6 @@ return ac;
 }
 function toggleSound(){snd=!snd;document.getElementById("btn-snd").innerText=snd?"🔊":"🔇"}
 
-// صدای ریختن تاس روی تخته چوبی (ضربه‌های سبک پلاستیک روی چوب)
 function playDiceKnock(pitch=1){
 const ctxA=ensureAudio();if(!ctxA)return;
 const t=ctxA.currentTime;
@@ -313,7 +312,6 @@ o.connect(g);g.connect(ctxA.destination);
 o.start(t);o.stop(t+0.05);
 }
 
-// صدای حرکت مهره روی هر خانه (پاپ چوبی نرم مثل پلاتو)
 function playStepPop(stepIdx=0){
 const ctxA=ensureAudio();if(!ctxA)return;
 const t=ctxA.currentTime;
@@ -329,7 +327,6 @@ o.connect(g);g.connect(ctxA.destination);
 o.start(t);o.stop(t+0.075);
 }
 
-// صدای زنگ تغییر نوبت پلاتو (دو نت نرم B5 -> E6)
 function playTurnChime(){
 const ctxA=ensureAudio();if(!ctxA)return;
 const t=ctxA.currentTime;
@@ -346,7 +343,6 @@ o.start(st);o.stop(st+0.23);
 });
 }
 
-// صدای بیرون آمدن با ۶ یا رسیدن به خانه امن
 function playSixSound(){
 const ctxA=ensureAudio();if(!ctxA)return;
 const t=ctxA.currentTime;
@@ -362,7 +358,6 @@ o.start(st);o.stop(st+0.19);
 });
 }
 
-// صدای زدن مهره حریف
 function playCaptureSound(){
 const ctxA=ensureAudio();if(!ctxA)return;
 const t=ctxA.currentTime;
@@ -376,7 +371,6 @@ o.connect(g);g.connect(ctxA.destination);
 o.start(t);o.stop(t+0.26);
 }
 
-// رسم نقطه‌های تاس سفید واقعی پلاتو (۱ تا ۶)
 const PIP_MAP={
 0:[4],
 1:[4],
@@ -475,14 +469,22 @@ const YARD_SPOTS=[
 [[10.8,1.8],[10.8,3.6],[12.6,1.8],[12.6,3.6]]
 ];
 
+// ۸ خانه امن: ۴ خانه شروع رنگی (0, 13, 26, 39) + ۴ خانه ستاره‌دار (8, 21, 34, 47)
+const STAR_CELLS=[8,21,34,47];
 const SAFE_CELLS=[0,8,13,21,26,34,39,47];
+
+function isSafeGlobalCell(g){
+if(g<0)return true;
+return SAFE_CELLS.includes(Number(g));
+}
 
 let speedMode="fast";
 let gameMode="none";
-let roomCode="",mySlot=2,pollTimer=null,lastRev=0;
+let roomCode="",mySlot=2,pollTimer=null,lastRev=0,lastMoveId=0;
 let state=null,movableTokens=[],turnDeadline=0;
 let isAnimating=false;
-let animHopOffset=0;
+let animHopOffset=0,animatingSlot=-1,animatingIdx=-1;
+let isPushing=false,pendingPush=false;
 
 function saveActiveRoom(code){
 if(code)localStorage.setItem("pl_active_room",JSON.stringify({code,ts:Date.now()}));
@@ -530,9 +532,11 @@ speedMode,
 goal,
 turn:first,
 dice:0,
+lastDice:1,
 phase:"roll",
 sixCount:0,
 winner:-1,
+lastMove:null,
 chat:null,
 msg:"نوبت "+players[first].name+" است؛ تاس بینداز!",
 players
@@ -556,7 +560,7 @@ playTurnChime();
 updateUI();
 }
 
-// --- بخش آنلاین ---
+// --- بخش آنلاین پرسرعت ---
 async function createOnlineRoom(){
 const code=String(Math.floor(1000+Math.random()*9000));
 roomCode=code;
@@ -578,7 +582,7 @@ joinOnlineRoom(c,false);
 async function joinOnlineRoom(code,silent=false){
 if(!silent)toast("در حال اتصال به اتاق "+code+"...");
 try{
-const r=await fetch(DB_URL+code+".json");
+const r=await fetch(DB_URL+code+".json?t="+Date.now(),{cache:"no-store"});
 if(!r.ok){saveActiveRoom("");if(!silent)toast("اتاقی با این کد پیدا نشد!");return}
 const d=await r.json();
 if(!d||!d.players||d.status==="win"){saveActiveRoom("");if(!silent)toast("این اتاق به پایان رسیده است!");return}
@@ -590,6 +594,7 @@ if(ex){
 mySlot=ex.slot;
 state=d;
 lastRev=d.rev||1;
+if(d.lastMove)lastMoveId=d.lastMove.id||0;
 }else{
 const order=[2,0,3,1];
 const free=order.find(s=>!d.players[s].active);
@@ -619,9 +624,19 @@ if(gameMode!=="online"||!roomCode||!state)return;
 state.rev=(state.rev||0)+1;
 lastRev=state.rev;
 saveActiveRoom(roomCode);
+if(isPushing){pendingPush=true;return}
+isPushing=true;
 try{
-await fetch(DB_URL+roomCode+".json",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(state)});
+do{
+pendingPush=false;
+await fetch(DB_URL+roomCode+".json",{
+method:"PUT",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify(state)
+});
+}while(pendingPush);
 }catch(e){}
+isPushing=false;
 }
 
 function openLobby(){
@@ -667,29 +682,83 @@ document.getElementById("lobby-screen").classList.add("hd");
 document.getElementById("menu-screen").classList.remove("hd");
 }
 
+// پخش انیمیشن حرکت حریف روی گوشی ما تا مهره جهشی نرود!
+function playRemoteMoveAnim(newState,prevTurn){
+const mv=newState.lastMove;
+lastMoveId=mv.id;
+isAnimating=true;
+
+const tempState=JSON.parse(JSON.stringify(newState));
+tempState.players[mv.slot].tokens[mv.idx]=mv.from;
+if(mv.captured&&mv.captured.length){
+for(const cap of mv.captured){
+tempState.players[cap.slot].tokens[cap.idx]=cap.from;
+}
+}
+state=tempState;
+renderDicePips(mv.dice||newState.lastDice||1);
+playDiceKnock(1.15);
+
+const steps=mv.from===-1?[0]:Array.from({length:mv.dice},(_,k)=>mv.from+k+1);
+let stepIndex=0;
+animatingSlot=mv.slot;
+animatingIdx=mv.idx;
+
+function nextStep(){
+if(stepIndex<steps.length){
+state.players[mv.slot].tokens[mv.idx]=steps[stepIndex];
+animHopOffset=1;
+setTimeout(()=>{animHopOffset=0},90);
+playStepPop(stepIndex);
+stepIndex++;
+setTimeout(nextStep,165);
+}else{
+animatingSlot=-1;
+animatingIdx=-1;
+state=newState;
+isAnimating=false;
+if(mv.captured&&mv.captured.length)playCaptureSound();
+else if(mv.to===56||mv.dice===6)playSixSound();
+if(prevTurn!==state.turn)playTurnChime();
+turnDeadline=Date.now()+15000;
+updateUI();
+}
+}
+nextStep();
+}
+
 let lastChatTs=0;
 function startPoll(){
 clearInterval(pollTimer);
 pollTimer=setInterval(async()=>{
-if(gameMode!=="online"||!roomCode||isAnimating)return;
+if(gameMode!=="online"||!roomCode||isAnimating||isPushing)return;
 try{
-const r=await fetch(DB_URL+roomCode+".json");
+const r=await fetch(DB_URL+roomCode+".json?t="+Date.now(),{cache:"no-store"});
 if(!r.ok)return;
 const d=await r.json();
-if(d&&d.rev&&d.rev>lastRev){
+if(d&&d.rev&&d.rev>lastRev&&!isAnimating&&!isPushing){
 const prevTurn=state?state.turn:-1;
+const prevDice=state?state.dice:0;
 lastRev=d.rev;
+if(d.status==="lobby"){
 state=d;
-if(state.status==="lobby")renderLobby();
-else{
+renderLobby();
+return;
+}
 document.getElementById("lobby-screen").classList.add("hd");
+if(d.lastMove&&d.lastMove.id&&d.lastMove.id!==lastMoveId&&d.lastMove.slot!==mySlot){
+playRemoteMoveAnim(d,prevTurn);
+return;
+}
+if(d.lastMove&&d.lastMove.id)lastMoveId=d.lastMove.id;
+state=d;
 turnDeadline=Date.now()+15000;
+if(d.dice&&d.dice!==prevDice)playDiceKnock(1.15);
 if(prevTurn!==state.turn)playTurnChime();
 updateUI();
 }
-}
 }catch(e){}
-},1000);
+},450);
 }
 
 function getInviteText(){
@@ -743,7 +812,7 @@ host.appendChild(b);
 setTimeout(()=>{if(b.parentNode)b.remove()},3200);
 }
 
-// --- منطق بازی منچ مطابق سرعت و افکت صوتی ویدئو ---
+// --- منطق بازی منچ ---
 function globalIdx(slot,relPos){
 if(relPos<0||relPos>50)return -1;
 return (SLOTS[slot].startIdx+relPos)%52;
@@ -777,7 +846,6 @@ if(!isMyControl()||state.phase!=="roll")return;
 doRoll();
 }
 
-// سرعت چرخش تاس دقیقاً مطابق ویدئو (~0.55 ثانیه با ضربه‌های تاس روی میز)
 function doRoll(){
 if(isAnimating)return;
 isAnimating=true;
@@ -792,11 +860,11 @@ ticks++;
 const rndFace=Math.floor(Math.random()*6)+1;
 renderDicePips(rndFace);
 if(ticks%2===0)playDiceKnock(0.85+Math.random()*0.3);
-if(ticks>=8){
+if(ticks>=6){
 clearInterval(rollIv);
 finishRoll();
 }
-},68);
+},55);
 }
 
 async function finishRoll(){
@@ -804,13 +872,14 @@ const btn=document.getElementById("dice-btn");
 btn.classList.remove("roll");
 const val=Math.floor(Math.random()*6)+1;
 state.dice=val;
+state.lastDice=val;
 renderDicePips(val);
 playDiceKnock(1.18);
 
 const p=state.players[state.turn];
 if(val===6){
 state.sixCount++;
-setTimeout(playSixSound,90);
+setTimeout(playSixSound,80);
 }else{
 state.sixCount=0;
 }
@@ -824,7 +893,7 @@ advanceTurn();
 isAnimating=false;
 if(gameMode==="online")await pushState();
 updateUI();
-},650);
+},550);
 return;
 }
 
@@ -837,17 +906,17 @@ advanceTurn();
 isAnimating=false;
 if(gameMode==="online")await pushState();
 updateUI();
-},700);
+},580);
 }else{
 state.phase="move";
 state.msg=p.name+" عدد "+val+" آورد؛ مهره را انتخاب کن!";
 isAnimating=false;
-if(gameMode==="online")await pushState();
+if(gameMode==="online")pushState();
 updateUI();
 if(p.isBot){
-setTimeout(()=>botMove(moves),420);
+setTimeout(()=>botMove(moves),350);
 }else if(moves.length===1){
-setTimeout(()=>moveToken(moves[0]),320);
+setTimeout(()=>moveToken(moves[0]),240);
 }
 }
 }
@@ -864,7 +933,7 @@ if(np===56)sc+=110;
 else if(pos===-1)sc+=55;
 else{
 const g=globalIdx(s,np);
-if(g>-1&&!SAFE_CELLS.includes(g)){
+if(g>-1&&!isSafeGlobalCell(g)){
 for(let o=0;o<4;o++){
 if(o===s||!state.players[o].active)continue;
 if(state.players[o].tokens.some(tp=>globalIdx(o,tp)===g))sc+=130;
@@ -877,7 +946,6 @@ if(sc>best){best=sc;pick=idx}
 moveToken(pick);
 }
 
-// سرعت حرکت خانه به خانه دقیقاً مطابق ویدئو (~220ms به ازای هر خانه + پاپ صوتی)
 function moveToken(idx){
 if(!state||state.phase!=="move"||isAnimating)return;
 const s=state.turn;
@@ -886,6 +954,8 @@ const d=state.dice;
 if(!getValidMoves(s,d).includes(idx))return;
 
 isAnimating=true;
+animatingSlot=s;
+animatingIdx=idx;
 movableTokens=[];
 const oldP=p.tokens[idx];
 const targetP=oldP===-1?0:oldP+d;
@@ -896,22 +966,25 @@ let stepIndex=0;
 function stepNext(){
 p.tokens[idx]=steps[stepIndex];
 animHopOffset=1;
-setTimeout(()=>{animHopOffset=0},105);
+setTimeout(()=>{animHopOffset=0},90);
 playStepPop(stepIndex);
 stepIndex++;
 if(stepIndex<steps.length){
-setTimeout(stepNext,220);
+setTimeout(stepNext,165);
 }else{
-setTimeout(()=>finalizeMove(s,idx,targetP,d),160);
+animatingSlot=-1;
+animatingIdx=-1;
+setTimeout(()=>finalizeMove(s,idx,oldP,targetP,d),110);
 }
 }
 stepNext();
 }
 
-async function finalizeMove(s,idx,newP,d){
+async function finalizeMove(s,idx,oldP,newP,d){
 const p=state.players[s];
 let bonus=(d===6);
 let hit=false;
+const capturedList=[];
 
 if(newP===56){
 p.finished=p.tokens.filter(x=>x===56).length;
@@ -920,6 +993,7 @@ playSixSound();
 if(p.finished>=state.goal){
 state.status="win";
 state.winner=s;
+state.lastMove={id:Date.now(),slot:s,idx,from:oldP,to:newP,dice:d,captured:[]};
 state.msg="🏆 "+p.name+" برنده بازی شد!";
 saveActiveRoom("");
 if((gameMode==="bot"&&s===2)||(gameMode==="online"&&s===mySlot)){
@@ -933,12 +1007,14 @@ return;
 }
 }else if(newP>=0&&newP<=50){
 const g=globalIdx(s,newP);
-if(!SAFE_CELLS.includes(g)){
+// بررسی دقیق خانه امن (ستاره‌دار و خانه‌های شروع رنگی)
+if(!isSafeGlobalCell(g)){
 for(let o=0;o<4;o++){
 if(o===s||!state.players[o].active)continue;
 const op=state.players[o];
 for(let k=0;k<4;k++){
-if(globalIdx(o,op.tokens[k])===g){
+if(op.tokens[k]>=0&&op.tokens[k]<=50&&globalIdx(o,op.tokens[k])===g){
+capturedList.push({slot:o,idx:k,from:op.tokens[k]});
 op.tokens[k]=-1;
 hit=true;
 bonus=true;
@@ -948,11 +1024,23 @@ bonus=true;
 }
 }
 
+state.lastMove={
+id:Date.now()+Math.floor(Math.random()*999),
+slot:s,
+idx,
+from:oldP,
+to:newP,
+dice:d,
+captured:capturedList
+};
+lastMoveId=state.lastMove.id;
+
 if(hit){
 playCaptureSound();
 if(p.isBot)setTimeout(()=>showBubbleDOM(s,"زدمت! 😂"),250);
 }
 
+state.lastDice=d;
 if(bonus){
 state.phase="roll";
 state.dice=0;
@@ -987,7 +1075,7 @@ playTurnChime();
 function updateUI(){
 if(!state)return;
 const btn=document.getElementById("dice-btn");
-if(!isAnimating)renderDicePips(state.dice||1);
+if(!isAnimating)renderDicePips(state.dice||state.lastDice||1);
 
 for(let s=0;s<4;s++){
 const p=state.players[s];
@@ -1016,7 +1104,7 @@ saveActiveRoom("");
 document.getElementById("win-txt").innerText=state.msg;
 document.getElementById("win-screen").classList.remove("hd");
 }else if(state.status==="play"&&state.players[state.turn].isBot&&state.phase==="roll"&&!isAnimating){
-setTimeout(doRoll,520);
+setTimeout(doRoll,450);
 }
 }
 
@@ -1126,7 +1214,7 @@ if(!state||state.status!=="play"||state.phase!=="move"||!isMyControl())return;
 const rect=cv.getBoundingClientRect();
 const px=e.clientX-rect.left,py=e.clientY-rect.top;
 const p=state.players[state.turn];
-let bestIdx=-1,bestD=CELL*1.2;
+let bestIdx=-1,bestD=CELL*1.25;
 for(const idx of movableTokens){
 const pt=getTokenPos(state.turn,idx,p.tokens[idx]);
 const d=Math.hypot(px-pt.x,py-pt.y);
@@ -1185,7 +1273,7 @@ ctx.strokeRect(c*CELL,r*CELL,CELL,CELL);
 }
 }
 
-for(const g of [8,21,34,47]){
+for(const g of STAR_CELLS){
 const [r,c]=MAIN_PATH[g];
 drawOutlineStar((c+0.5)*CELL,(r+0.5)*CELL,CELL*0.33);
 }
@@ -1212,7 +1300,9 @@ ctx.closePath();
 ctx.fill();
 }
 
-const occ={};
+// شمارش تعداد مهره‌ها روی هر خانه برای چیدمان مرتب در خانه‌های امن
+const cellTotals={};
+const allItems=[];
 for(let s=0;s<4;s++){
 const active=state?state.players[s].active:true;
 if(!active)continue;
@@ -1221,27 +1311,46 @@ for(let i=0;i<4;i++){
 const pos=tokens[i];
 const pt=getTokenPos(s,i,pos);
 const key=Math.round(pt.x)+"_"+Math.round(pt.y);
-occ[key]=(occ[key]||0)+1;
-const stIdx=occ[key]-1;
-const ox=stIdx===0?0:(stIdx%2===1?-3.2:3.2);
-const oy=stIdx>1?-3.2:0;
+cellTotals[key]=(cellTotals[key]||0)+1;
+allItems.push({s,i,pos,pt,key});
+}
+}
+
+const cellSeen={};
+for(const item of allItems){
+const {s,i,pt,key}=item;
+const totalInCell=cellTotals[key];
+const idxInCell=cellSeen[key]||0;
+cellSeen[key]=idxInCell+1;
+
+let ox=0,oy=0,scale=1;
+if(totalInCell===2){
+scale=0.8;
+ox=idxInCell===0?-CELL*0.18:CELL*0.18;
+}else if(totalInCell>=3){
+scale=0.72;
+const offsets=[[-0.18,-0.16],[0.18,-0.16],[-0.18,0.16],[0.18,0.16]];
+ox=offsets[idxInCell%4][0]*CELL;
+oy=offsets[idxInCell%4][1]*CELL;
+}
 
 const isMov=(state&&s===state.turn&&movableTokens.includes(i)&&isMyControl());
-const hop=(state&&s===state.turn&&isAnimating&&animHopOffset)?-4.2:0;
-const rad=CELL*0.39+(isMov?pulse*1.8:0);
+const isThisHop=(isAnimating&&animHopOffset&&s===animatingSlot&&i===animatingIdx);
+const hop=isThisHop?-4.8:0;
+const rad=(CELL*0.39*scale)+(isMov?pulse*1.6:0);
 const tx=pt.x+ox,ty=pt.y+oy+hop;
 
 if(isMov){
 ctx.strokeStyle="#111827";
-ctx.lineWidth=2.8;
+ctx.lineWidth=2.6;
 ctx.beginPath();
-ctx.arc(tx,ty,rad+3.5,0,Math.PI*2);
+ctx.arc(tx,ty,rad+3.2,0,Math.PI*2);
 ctx.stroke();
 }
 
 ctx.fillStyle="rgba(0,0,0,0.38)";
 ctx.beginPath();
-ctx.arc(tx,pt.y+oy+2.8,rad,0,Math.PI*2);
+ctx.arc(tx,pt.y+oy+2.6,rad,0,Math.PI*2);
 ctx.fill();
 
 ctx.fillStyle="#ffffff";
@@ -1258,7 +1367,6 @@ if(curTheme===1){
 ctx.strokeStyle="#facc15";ctx.lineWidth=1.8;ctx.beginPath();ctx.arc(tx,ty,rad*0.85,0,Math.PI*2);ctx.stroke();
 }else if(curTheme===2){
 ctx.strokeStyle="#38bdf8";ctx.lineWidth=2;ctx.beginPath();ctx.arc(tx,ty,rad*0.9,0,Math.PI*2);ctx.stroke();
-}
 }
 }
 }
