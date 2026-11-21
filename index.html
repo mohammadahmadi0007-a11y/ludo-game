@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>LUDO | منچ پلاتو</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;user-select:none;-webkit-tap-highlight-color:transparent;font-family:Tahoma,Arial,sans-serif}
+html,body{width:100%;height:100%;background:#1e1e1e;color:#fff;overflow:hidden}
+#app{position:relative;width:100%;max-width:480px;height:100%;margin:0 auto;background:#262626;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden}
+
+/* نوار بالا مطابق پلاتو */
+.top-bar{height:50px;padding:0 12px;display:flex;justify-content:space-between;align-items:center;z-index:10}
+.circle-btn{width:36px;height:36px;border-radius:50%;background:#333333;border:none;color:#e5e5e5;font-size:16px;display:flex;justify-content:center;align-items:center;cursor:pointer}
+.circle-btn:active{transform:scale(.92)}
+.items-pill{background:#171717;border:1px solid #333;border-radius:20px;padding:6px 16px;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:900;letter-spacing:.5px;color:#fff;cursor:pointer}
+.items-pill:active{transform:scale(.95)}
+
+/* ردیف بازیکنان بالا و پایین تخته */
+.p-strip{display:flex;justify-content:space-between;align-items:flex-start;padding:2px 16px;min-height:66px}
+.p-slot{display:flex;flex-direction:column;align-items:center;width:130px;position:relative;transition:.2s}
+.p-slot.off{opacity:.25;filter:grayscale(1)}
+.p-name-row{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#f3f4f6;max-width:126px}
+.p-name-txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:ltr}
+.dot-on{width:7px;height:7px;border-radius:50%;background:#84cc16;flex-shrink:0}
+.timer-bar{width:46px;height:6px;background:#111;border-radius:4px;overflow:hidden;margin:3px 0;opacity:0;transition:.2s}
+.p-slot.active .timer-bar{opacity:1}
+.timer-fill{height:100%;width:100%;background:#facc15;transition:width .25s linear}
+.av-row{display:flex;align-items:center;gap:8px;margin-top:2px}
+.av-wrap{position:relative;width:44px;height:44px;border-radius:50%;padding:2px;border:3px solid transparent;transition:.2s}
+.p-slot.active .av-wrap{border-color:#38bdf8;box-shadow:0 0 12px rgba(56,189,248,.55)}
+.av{width:100%;height:100%;border-radius:50%;background:#404040;display:flex;justify-content:center;align-items:center;font-weight:900;font-size:15px;color:#fff;overflow:hidden}
+.av img{width:100%;height:100%;object-fit:cover}
+.tok-badge{width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 3px 0 #9ca3af,0 4px 6px rgba(0,0,0,.45);display:flex;justify-content:center;align-items:center}
+.tok-badge-in{width:12px;height:12px;border-radius:50%}
+
+/* حباب چت روی صفحه */
+.chat-bubble{position:absolute;top:-22px;background:#fff;color:#111;font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;white-space:nowrap;box-shadow:0 4px 10px rgba(0,0,0,.4);z-index:20;animation:popIn .2s ease;pointer-events:none}
+@keyframes popIn{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* تخته وسط */
+.board-area{flex:1;display:flex;justify-content:center;align-items:center;padding:2px 8px;min-height:0}
+.board-frame{background:#ffffff;padding:8px;border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.5)}
+canvas{display:block;touch-action:manipulation}
+
+/* وضعیت نوبت و تاس */
+.status-row{display:flex;align-items:center;justify-content:center;gap:12px;padding:4px 14px;min-height:54px}
+.status-txt{font-size:13px;font-weight:700;color:#e5e5e5;text-align:center}
+.dice-btn{width:48px;height:48px;border-radius:12px;background:#ffffff;border:3px solid #38bdf8;color:#111;font-size:26px;display:flex;justify-content:center;align-items:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.4);transition:.15s;flex-shrink:0}
+.dice-btn:active{transform:scale(.9)}
+.dice-btn.disabled{opacity:.38;pointer-events:none;border-color:#525252}
+.dice-btn.roll{animation:diceWobble .32s infinite}
+@keyframes diceWobble{0%{transform:rotate(-10deg) scale(1.06)}50%{transform:rotate(10deg) scale(1.08)}100%{transform:rotate(-10deg) scale(1.06)}}
+
+/* نوار چت پایین Say hello... */
+.chat-bar{height:48px;background:#1a1a1a;border-top:1px solid #333;padding:0 12px;display:flex;align-items:center;gap:10px}
+.chat-quick-btn{width:30px;height:30px;border-radius:7px;border:1.5px solid #84cc16;background:transparent;color:#84cc16;font-size:14px;display:flex;justify-content:center;align-items:center;cursor:pointer}
+.chat-inp{flex:1;background:transparent;border:none;outline:none;color:#fff;font-size:14px;direction:auto}
+.chat-inp::placeholder{color:#737373}
+.send-btn{background:none;border:none;color:#9ca3af;font-size:18px;cursor:pointer;padding:4px}
+.send-btn:active{color:#fff}
+
+/* منوی پیام‌های سریع */
+.quick-pop{position:absolute;bottom:52px;right:12px;background:#1f1f1f;border:1px solid #3f3f46;border-radius:12px;padding:6px;display:flex;flex-wrap:wrap;gap:6px;max-width:300px;z-index:25;box-shadow:0 8px 20px rgba(0,0,0,.6)}
+.q-chip{background:#333;color:#fff;font-size:11px;padding:5px 10px;border-radius:14px;cursor:pointer}
+.q-chip:active{background:#38bdf8;color:#000}
+
+/* صفحات منو، لابی، فروشگاه */
+.overlay{position:absolute;inset:0;background:rgba(24,24,27,.97);display:flex;flex-direction:column;justify-content:center;align-items:center;padding:18px;z-index:40;overflow-y:auto}
+.hd{display:none!important}
+.logo{font-size:28px;font-weight:900;color:#fff;margin-bottom:4px}
+.logo span{color:#facc15}
+.sub{font-size:12px;color:#a1a1aa;margin-bottom:14px;text-align:center;line-height:1.5}
+.box{width:100%;max-width:350px;background:#27272a;border:1px solid #3f3f46;border-radius:16px;padding:12px;margin-bottom:11px}
+.box-t{font-size:12px;font-weight:700;color:#38bdf8;margin-bottom:8px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg-b{padding:9px;border-radius:10px;background:#18181b;border:1.5px solid #3f3f46;color:#d4d4d8;font-size:12px;font-weight:700;cursor:pointer;text-align:center}
+.seg-b.active{border-color:#38bdf8;background:rgba(56,189,248,.16);color:#fff}
+.btn{width:100%;max-width:350px;padding:13px;border:none;border-radius:13px;font-size:14px;font-weight:900;cursor:pointer;margin-bottom:8px}
+.btn:active{transform:scale(.97)}
+.btn-green{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff}
+.btn-blue{background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff}
+.btn-ghost{background:#3f3f46;color:#fff;font-size:13px}
+.join-row{display:flex;gap:8px}
+.code-inp{flex:1;background:#18181b;border:1.5px solid #3f3f46;border-radius:10px;padding:10px;color:#fff;font-size:15px;font-weight:900;text-align:center;letter-spacing:3px;outline:none}
+.room-big{font-size:30px;font-weight:900;color:#facc15;letter-spacing:6px;text-align:center;padding:8px;background:#18181b;border-radius:12px;margin:8px 0;direction:ltr}
+.slot-r{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-radius:10px;background:#18181b;margin-bottom:6px;font-size:12px}
+.items-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;max-width:350px;margin-bottom:14px}
+.it-card{background:#27272a;border:2px solid #3f3f46;border-radius:14px;padding:10px 6px;text-align:center;cursor:pointer}
+.it-card.active{border-color:#facc15;background:rgba(250,204,21,.12)}
+.brand-tag{margin-top:6px;padding:6px 14px;border-radius:20px;background:#27272a;border:1px solid #3f3f46;font-size:11px;color:#d4d4d8;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.brand-tag b{color:#38bdf8;direction:ltr}
+#toast{position:absolute;top:56px;left:50%;transform:translateX(-50%);background:#111;color:#fff;border:1px solid #38bdf8;padding:7px 14px;border-radius:10px;font-size:12px;font-weight:700;z-index:60;opacity:0;transition:.2s;pointer-events:none;white-space:nowrap}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="toast"></div>
+
+<!-- نوار بالا -->
+<div class="top-bar">
+<button class="circle-btn" onclick="confirmExit()">←</button>
+<div class="items-pill" onclick="openItems()"><span style="color:#facc15">⭐</span> ITEMS <span id="star-cnt" style="color:#facc15;font-size:11px">(0)</span></div>
+<button class="circle-btn" id="btn-snd" onclick="toggleSound()">🔊</button>
+</div>
+
+<!-- بازیکنان بالا: چپ=زرد (slot 0)، راست=آبی (slot 1) -->
+<div class="p-strip">
+<div class="p-slot" id="pslot-0">
+<div class="p-name-row"><span class="dot-on"></span><span class="p-name-txt" id="pname-0">زرد</span></div>
+<div class="timer-bar"><div class="timer-fill" id="tfill-0"></div></div>
+<div class="av-row">
+<div class="tok-badge"><div class="tok-badge-in" style="background:#facc15"></div></div>
+<div class="av-wrap"><div class="av" id="pav-0">Y</div></div>
+</div>
+</div>
+
+<div class="p-slot" id="pslot-1">
+<div class="p-name-row"><span class="dot-on"></span><span class="p-name-txt" id="pname-1">آبی</span></div>
+<div class="timer-bar"><div class="timer-fill" id="tfill-1"></div></div>
+<div class="av-row">
+<div class="av-wrap"><div class="av" id="pav-1">B</div></div>
+<div class="tok-badge"><div class="tok-badge-in" style="background:#2563eb"></div></div>
+</div>
+</div>
+</div>
+
+<!-- تخته منچ -->
+<div class="board-area">
+<div class="board-frame">
+<canvas id="cv"></canvas>
+</div>
+</div>
+
+<!-- بازیکنان پایین: چپ=سبز (slot 3)، راست=قرمز (slot 2) -->
+<div class="p-strip">
+<div class="p-slot" id="pslot-3">
+<div class="timer-bar"><div class="timer-fill" id="tfill-3"></div></div>
+<div class="av-row">
+<div class="tok-badge"><div class="tok-badge-in" style="background:#16a34a"></div></div>
+<div class="av-wrap"><div class="av" id="pav-3">G</div></div>
+</div>
+<div class="p-name-row" style="margin-top:3px"><span class="dot-on"></span><span class="p-name-txt" id="pname-3">سبز</span></div>
+</div>
+
+<div class="p-slot" id="pslot-2">
+<div class="timer-bar"><div class="timer-fill" id="tfill-2"></div></div>
+<div class="av-row">
+<div class="av-wrap"><div class="av" id="pav-2">R</div></div>
+<div class="tok-badge"><div class="tok-badge-in" style="background:#dc2626"></div></div>
+</div>
+<div class="p-name-row" style="margin-top:3px"><span class="dot-on"></span><span class="p-name-txt" id="pname-2">قرمز</span></div>
+</div>
+</div>
+
+<!-- وضعیت نوبت و دکمه تاس -->
+<div class="status-row">
+<div class="status-txt" id="status-txt">آماده شروع بازی</div>
+<button class="dice-btn" id="dice-btn" onclick="onDiceClick()">🎲</button>
+</div>
+
+<!-- پیام‌های سریع -->
+<div class="quick-pop hd" id="quick-pop">
+<div class="q-chip" onclick="sendQuick('سلام! 👋')">سلام! 👋</div>
+<div class="q-chip" onclick="sendQuick('عجب تاسی! 🎲')">عجب تاسی! 🎲</div>
+<div class="q-chip" onclick="sendQuick('زدمت! 😂')">زدمت! 😂</div>
+<div class="q-chip" onclick="sendQuick('زود باش ⏳')">زود باش ⏳</div>
+<div class="q-chip" onclick="sendQuick('ایول 👏')">ایول 👏</div>
+<div class="q-chip" onclick="sendQuick('شانس آوردی! 😅')">شانس آوردی! 😅</div>
+</div>
+
+<!-- نوار چت پایین -->
+<div class="chat-bar">
+<button class="chat-quick-btn" onclick="toggleQuickChat()">💬</button>
+<input class="chat-inp" id="chat-inp" placeholder="Say hello..." maxlength="28" onkeydown="if(event.key==='Enter')sendChatInput()">
+<button class="send-btn" onclick="sendChatInput()">➤</button>
+</div>
+
+<!-- منوی اصلی -->
+<div class="overlay" id="menu-screen">
+<div class="logo">🎲 LUDO <span>PRO</span></div>
+<div class="sub">منچ آنلاین دقیقاً با سبک و چیدمان پلاتو! با دوستانت در بله بازی کن یا با ربات رقابت کن.</div>
+
+<div class="box">
+<div class="box-t">⚡ حالت بازی</div>
+<div class="seg">
+<div class="seg-b active" id="m-fast" onclick="setSpeed('fast')">⚡ منچ سریع (۲ مهره)</div>
+<div class="seg-b" id="m-classic" onclick="setSpeed('classic')">👑 کلاسیک (۴ مهره)</div>
+</div>
+</div>
+
+<button class="btn btn-green" onclick="createOnlineRoom()">🌐 ساخت اتاق آنلاین و دعوت دوست</button>
+
+<div class="box">
+<div class="box-t">🔑 ورود با کد اتاق دوستت</div>
+<div class="join-row">
+<input class="code-inp" id="room-inp" maxlength="4" inputmode="numeric" placeholder="1234">
+<button class="btn btn-blue" style="width:auto;margin:0;padding:10px 18px" onclick="joinByCode()">ورود</button>
+</div>
+</div>
+
+<div class="box">
+<div class="box-t">📱 بازی آفلاین / تمرینی</div>
+<div class="seg">
+<div class="seg-b" onclick="startLocal('bot')">🤖 بازی با ربات</div>
+<div class="seg-b" onclick="startLocal('pvp2')">👥 دونفره (یک گوشی)</div>
+</div>
+</div>
+
+<div class="brand-tag" onclick="openChannel()">🎮 اختصاصی کانال <b>@gamee_balee</b></div>
+</div>
+
+<!-- لابی اتاق آنلاین -->
+<div class="overlay hd" id="lobby-screen">
+<div class="logo" style="font-size:24px">🌐 اتاق آنلاین منچ</div>
+<div class="sub">لینک دعوت را برای دوستت در بله بفرست تا وارد میز شود:</div>
+<div class="box">
+<div style="font-size:11px;color:#a1a1aa;text-align:center">کد اتاق</div>
+<div class="room-big" id="lobby-code">----</div>
+<div id="lobby-list"></div>
+</div>
+<button class="btn btn-blue" onclick="inviteFriend()">📤 ارسال لینک دعوت به دوست در بله</button>
+<button class="btn btn-green hd" id="btn-start-online" onclick="hostStartGame()">▶️ شروع بازی</button>
+<button class="btn btn-ghost" onclick="leaveLobby()">بازگشت</button>
+</div>
+
+<!-- فروشگاه ITEMS -->
+<div class="overlay hd" id="items-screen">
+<div class="logo" style="font-size:24px">⭐ فروشگاه آیتم‌ها (ITEMS)</div>
+<div class="sub">ستاره‌های شما: <b style="color:#facc15" id="shop-stars">0</b> ⭐ (با هر برد +۱۰ ستاره بگیر)</div>
+<div class="items-grid" id="items-grid"></div>
+<button class="btn btn-green" onclick="closeItems()">بستن</button>
+</div>
+
+<!-- پایان بازی -->
+<div class="overlay hd" id="win-screen">
+<div class="logo" style="color:#facc15">🏆 پایان بازی!</div>
+<div class="sub" id="win-txt" style="font-size:15px;color:#fff;font-weight:700"></div>
+<button class="btn btn-green" onclick="backToMenu()">🏠 بازگشت به منو</button>
+<button class="btn btn-blue" onclick="shareResult()">📤 ارسال نتیجه در بله</button>
+<div class="brand-tag" onclick="openChannel()">🎮 اختصاصی کانال <b>@gamee_balee</b></div>
+</div>
+</div>
+
+<script>
+const DB_URL="https://kido-db.mohammadahmadi0007.workers.dev/plato_ludo_";
+const BOT_LINK="https://ble.ir/ludo_gamee_bot";
+const CHANNEL_ID="@gamee_balee";
+const CHANNEL_URL="https://ble.ir/gamee_balee";
+
+function openChannel(){
+if(window.Bale&&Bale.WebApp&&Bale.WebApp.openLink)Bale.WebApp.openLink(CHANNEL_URL);
+else window.open(CHANNEL_URL,"_blank");
+}
+
+let usr={id:localStorage.getItem("pl_uid")||("u_"+Math.floor(1e5+Math.random()*9e5)),name:"Player",photo:""};
+localStorage.setItem("pl_uid",usr.id);
+let startParam="";
+try{
+const raw=(location.hash||"")+"&"+(location.search||"");
+const sp=new URLSearchParams(location.search);
+if(sp.get("room"))startParam=sp.get("room");
+const m=raw.match(/(?:tgWebAppData|baleWebAppData)=([^&]+)/);
+if(m&&m[1]){
+const p=new URLSearchParams(decodeURIComponent(m[1]));
+if(p.get("start_param"))startParam=p.get("start_param");
+const u=JSON.parse(p.get("user"));
+if(u&&u.id){usr.id="b_"+u.id;usr.name=[u.first_name,u.last_name].filter(Boolean).join(" ")||"User";if(u.photo_url)usr.photo=u.photo_url}
+}
+if(window.Bale&&Bale.WebApp){
+Bale.WebApp.ready();Bale.WebApp.expand();
+const init=Bale.WebApp.initDataUnsafe||{};
+if(init.start_param)startParam=init.start_param;
+const u=init.user;
+if(u&&u.id){usr.id="b_"+u.id;usr.name=[u.first_name,u.last_name].filter(Boolean).join(" ")||"User";if(u.photo_url)usr.photo=u.photo_url}
+}
+}catch(e){}
+
+function toast(m){const t=document.getElementById("toast");t.innerText=m;t.style.opacity="1";setTimeout(()=>t.style.opacity="0",2100)}
+
+let snd=true,ac=null;
+function beep(f,d,t="sine",v=0.11){
+if(!snd||document.hidden)return;
+try{
+if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)();
+if(ac.state==="suspended")ac.resume().catch(()=>{});
+const o=ac.createOscillator(),g=ac.createGain();
+o.type=t;o.frequency.value=f;
+g.gain.setValueAtTime(v,ac.currentTime);
+g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);
+o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d);
+}catch(e){}
+}
+function toggleSound(){snd=!snd;document.getElementById("btn-snd").innerText=snd?"🔊":"🔇"}
+
+// فروشگاه آیتم‌ها (طرح مهره‌ها)
+let stars=parseInt(localStorage.getItem("pl_stars")||"0",10);
+let ownedThemes=JSON.parse(localStorage.getItem("pl_themes")||"[0]");
+let curTheme=parseInt(localStorage.getItem("pl_theme")||"0",10);
+const THEMES=[
+{name:"پلاتو کلاسیک",cost:0,icon:"⚪",ringStyle:"classic"},
+{name:"طلایی",cost:15,icon:"🌟",ringStyle:"gold"},
+{name:"نئون",cost:30,icon:"💠",ringStyle:"neon"},
+{name:"سلطنتی",cost:50,icon:"👑",ringStyle:"crown"},
+{name:"آتشین",cost:75,icon:"🔥",ringStyle:"fire"},
+{name:"الماس",cost:100,icon:"💎",ringStyle:"diamond"}
+];
+function updStarUI(){
+localStorage.setItem("pl_stars",stars);
+document.getElementById("star-cnt").innerText="("+stars+")";
+document.getElementById("shop-stars").innerText=stars;
+}
+updStarUI();
+
+function openItems(){
+updStarUI();
+document.getElementById("items-grid").innerHTML=THEMES.map((th,i)=>{
+const ok=ownedThemes.includes(i),act=curTheme===i;
+return `<div class="it-card ${act?'active':''}" onclick="buyTheme(${i})">
+<div style="font-size:24px;margin-bottom:4px">${th.icon}</div>
+<div style="font-size:11px;font-weight:700;margin-bottom:3px">${th.name}</div>
+<div style="font-size:10px;color:${act?'#facc15':ok?'#4ade80':'#38bdf8'}">${act?'فعال ✅':ok?'انتخاب':th.cost+' ⭐'}</div>
+</div>`;
+}).join("");
+document.getElementById("items-screen").classList.remove("hd");
+}
+function closeItems(){document.getElementById("items-screen").classList.add("hd")}
+function buyTheme(i){
+if(ownedThemes.includes(i)){curTheme=i;localStorage.setItem("pl_theme",i);beep(620,.08);openItems();toast("طرح "+THEMES[i].name+" فعال شد!")}
+else if(stars>=THEMES[i].cost){
+stars-=THEMES[i].cost;ownedThemes.push(i);curTheme=i;
+localStorage.setItem("pl_themes",JSON.stringify(ownedThemes));localStorage.setItem("pl_theme",i);
+beep(820,.14);openItems();toast("طرح "+THEMES[i].name+" خریداری شد!");
+}else toast("ستاره کافی نداری! با بردن بازی ستاره بگیر ⭐");
+}
+
+// چیدمان دقیق رنگ‌ها مطابق تصویر پلاتو[span_5](start_span)[span_5](end_span):
+// slot 0: زرد (بالا-چپ) | slot 1: آبی (بالا-راست) | slot 2: قرمز (پایین-راست) | slot 3: سبز (پایین-چپ)
+const SLOTS=[
+{name:"Yellow",col:"#facc15",inner:"#f59e0b",ring:"#eab308",startIdx:0},
+{name:"Blue",col:"#2563eb",inner:"#1d4ed8",ring:"#2563eb",startIdx:13},
+{name:"Red",col:"#dc2626",inner:"#b91c1c",ring:"#dc2626",startIdx:26},
+{name:"Green",col:"#16a34a",inner:"#15803d",ring:"#16a34a",startIdx:39}
+];
+
+// مسیر ۵۲ خانه دور تخته (ساعتگرد مطابق جهت فلش‌های تصویر[span_6](start_span)[span_6](end_span))
+const MAIN_PATH=[
+[6,1],[6,2],[6,3],[6,4],[6,5],
+[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],
+[0,7],[0,8],
+[1,8],[2,8],[3,8],[4,8],[5,8],
+[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],
+[7,14],[8,14],
+[8,13],[8,12],[8,11],[8,10],[8,9],
+[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],
+[14,7],[14,6],
+[13,6],[12,6],[11,6],[10,6],[9,6],
+[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],
+[7,0],[6,0]
+];
+
+// مسیر ۵ خانه رنگی پایان + خانه مرکز (pos 51..56)[span_7](start_span)[span_7](end_span)
+const HOME_PATHS=[
+[[7,1],[7,2],[7,3],[7,4],[7,5],[7,6]],     // زرد (چپ به مرکز)
+[[1,7],[2,7],[3,7],[4,7],[5,7],[6,7]],     // آبی (بالا به مرکز)
+[[7,13],[7,12],[7,11],[7,10],[7,9],[7,8]], // قرمز (راست به مرکز)
+[[13,7],[12,7],[11,7],[10,7],[9,7],[8,7]]  // سبز (پایین به مرکز)
+];
+
+// مختصات ۴ جایگاه داخل حیاط هر گوشه[span_8](start_span)[span_8](end_span)
+const YARD_SPOTS=[
+[[1.8,1.8],[1.8,3.6],[3.6,1.8],[3.6,3.6]],       // زرد (بالا-چپ)
+[[1.8,10.8],[1.8,12.6],[3.6,10.8],[3.6,12.6]],   // آبی (بالا-راست)
+[[10.8,10.8],[10.8,12.6],[12.6,10.8],[12.6,12.6]], // قرمز (پایین-راست)
+[[10.8,1.8],[10.8,3.6],[12.6,1.8],[12.6,3.6]]    // سبز (پایین-چپ)
+];
+
+// خانه‌های امن ستاره‌دار مطابق تصویر[span_9](start_span)[span_9](end_span)
+const SAFE_CELLS=[0,8,13,21,26,34,39,47];
+
+let speedMode="fast";
+let gameMode="none"; // bot | pvp2 | online
+let roomCode="",mySlot=2,pollTimer=null,lastRev=0;
+let state=null,movableTokens=[],turnDeadline=0;
+
+function setSpeed(m){
+speedMode=m;
+document.getElementById("m-fast").classList.toggle("active",m==="fast");
+document.getElementById("m-classic").classList.toggle("active",m==="classic");
+}
+
+function buildState(plist){
+const goal=speedMode==="fast"?2:4;
+const players=[0,1,2,3].map(s=>{
+const found=plist.find(x=>x.slot===s);
+const active=!!found;
+const tokens=active?(speedMode==="fast"?[0,-1,-1,-1]:[-1,-1,-1,-1]):[-1,-1,-1,-1];
+return {
+slot:s,
+active,
+isBot:found?!!found.isBot:false,
+id:found?found.id:"",
+name:found?found.name:SLOTS[s].name,
+photo:found?found.photo:"",
+tokens,
+finished:0
+};
+});
+// شروع نوبت از بازیکن پایین-راست (قرمز - slot 2) یا اولین بازیکن فعال
+const first=players[2].active?2:players.findIndex(p=>p.active);
+return {
+rev:1,
+status:"play",
+speedMode,
+goal,
+turn:first,
+dice:0,
+phase:"roll",
+sixCount:0,
+winner:-1,
+chat:null, // {slot, text, ts}
+msg:players[first].name+" can roll",
+players
+};
+}
+
+function startLocal(mode){
+gameMode=mode;
+clearInterval(pollTimer);
+mySlot=2; // کاربر پایین-راست (قرمز) مثل تصویر[span_10](start_span)[span_10](end_span)
+const plist=mode==="bot"
+?[{slot:2,id:usr.id,name:usr.name,photo:usr.photo,isBot:false},{slot:0,id:"bot0",name:"pichumamiX2",photo:"",isBot:true}]
+:[{slot:2,id:usr.id,name:usr.name,photo:usr.photo,isBot:false},{slot:0,id:"p2",name:"Player 2",photo:"",isBot:false}];
+state=buildState(plist);
+turnDeadline=Date.now()+15000;
+document.getElementById("menu-screen").classList.add("hd");
+document.getElementById("win-screen").classList.add("hd");
+updateUI();
+}
+
+// --- بخش آنلاین ---
+async function createOnlineRoom(){
+const code=String(Math.floor(1000+Math.random()*9000));
+roomCode=code;
+gameMode="online";
+mySlot=2; // میزبان پایین-راست (قرمز)[span_11](start_span)[span_11](end_span)
+state=buildState([{slot:2,id:usr.id,name:usr.name,photo:usr.photo,isBot:false}]);
+state.status="lobby";
+await pushState();
+openLobby();
+}
+
+function joinByCode(){
+const c=document.getElementById("room-inp").value.trim();
+if(c.length!==4){toast("کد ۴ رقمی را وارد کن!");return}
+joinOnlineRoom(c);
+}
+
+async function joinOnlineRoom(code){
+toast("اتصال به اتاق "+code+"...");
+try{
+const r=await fetch(DB_URL+code+".json");
+if(!r.ok){toast("اتاق پیدا نشد!");return}
+const d=await r.json();
+if(!d||!d.players){toast("اتاق نامعتبر است!");return}
+roomCode=code;
+gameMode="online";
+const ex=d.players.find(p=>p.active&&p.id===usr.id);
+if(ex){
+mySlot=ex.slot;
+state=d;
+}else{
+const order=[2,0,3,1];
+const free=order.find(s=>!d.players[s].active);
+if(free===undefined){toast("اتاق پر شده است!");return}
+mySlot=free;
+d.players[free].active=true;
+d.players[free].id=usr.id;
+d.players[free].name=usr.name;
+d.players[free].photo=usr.photo;
+d.players[free].tokens=d.speedMode==="fast"?[0,-1,-1,-1]:[-1,-1,-1,-1];
+state=d;
+await pushState();
+}
+if(state.status==="lobby")openLobby();
+else{
+document.getElementById("menu-screen").classList.add("hd");
+document.getElementById("lobby-screen").classList.add("hd");
+turnDeadline=Date.now()+15000;
+updateUI();
+startPoll();
+}
+}catch(e){toast("خطا در اتصال به سرور!")}
+}
+
+async function pushState(){
+if(gameMode!=="online"||!roomCode||!state)return;
+state.rev=(state.rev||0)+1;
+lastRev=state.rev;
+try{
+await fetch(DB_URL+roomCode+".json",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(state)});
+}catch(e){}
+}
+
+function openLobby(){
+document.getElementById("menu-screen").classList.add("hd");
+document.getElementById("lobby-screen").classList.remove("hd");
+document.getElementById("lobby-code").innerText=roomCode;
+renderLobby();
+startPoll();
+}
+
+function renderLobby(){
+if(!state)return;
+const cnt=state.players.filter(p=>p.active).length;
+document.getElementById("btn-start-online").classList.toggle("hd",!(mySlot===2&&cnt>=2));
+document.getElementById("lobby-list").innerHTML=[2,0,3,1].map(s=>{
+const p=state.players[s];
+return `<div class="slot-r" style="border-right:4px solid ${SLOTS[s].col}">
+<span>${p.active?p.name:"در انتظار بازیکن..."}</span>
+<span style="color:${p.active?'#4ade80':'#71717a'};font-weight:700">${p.active?'آماده ✅':'خالی'}</span>
+</div>`;
+}).join("");
+}
+
+async function hostStartGame(){
+if(!state||mySlot!==2)return;
+state.status="play";
+state.turn=2;
+state.phase="roll";
+state.msg=state.players[2].name+" can roll";
+await pushState();
+document.getElementById("lobby-screen").classList.add("hd");
+turnDeadline=Date.now()+15000;
+updateUI();
+}
+
+function leaveLobby(){
+clearInterval(pollTimer);
+document.getElementById("lobby-screen").classList.add("hd");
+document.getElementById("menu-screen").classList.remove("hd");
+}
+
+let lastChatTs=0;
+function startPoll(){
+clearInterval(pollTimer);
+pollTimer=setInterval(async()=>{
+if(gameMode!=="online"||!roomCode)return;
+try{
+const r=await fetch(DB_URL+roomCode+".json");
+if(!r.ok)return;
+const d=await r.json();
+if(d&&d.rev&&d.rev>lastRev){
+lastRev=d.rev;
+state=d;
+if(state.status==="lobby")renderLobby();
+else{
+document.getElementById("lobby-screen").classList.add("hd");
+turnDeadline=Date.now()+15000;
+updateUI();
+}
+}
+}catch(e){}
+},1000);
+}
+
+function inviteFriend(){
+const link=BOT_LINK+"?startapp="+roomCode;
+const txt=`🎲 بیا با هم منچ آنلاین بزنیم!\n🔑 کد اتاق: ${roomCode}\nروی لینک زیر بزن و مستقیم وارد میز شو 👇\n\n🎮 کانال بازی‌های ما: ${CHANNEL_ID}`;
+const url=`https://ble.ir/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(txt)}`;
+if(window.Bale&&Bale.WebApp&&Bale.WebApp.openLink)Bale.WebApp.openLink(url);
+else if(navigator.share)navigator.share({title:"LUDO PRO",text:txt,url:link}).catch(()=>{});
+else window.open(url,"_blank");
+}
+
+// --- چت سریع و حباب گفتگو ---
+function toggleQuickChat(){
+document.getElementById("quick-pop").classList.toggle("hd");
+}
+function sendQuick(txt){
+document.getElementById("quick-pop").classList.add("hd");
+sendBubble(mySlot,txt);
+}
+function sendChatInput(){
+const inp=document.getElementById("chat-inp");
+const txt=inp.value.trim();
+if(!txt)return;
+inp.value="";
+sendBubble(mySlot,txt);
+}
+async function sendBubble(slot,txt){
+if(!state)return;
+showBubbleDOM(slot,txt);
+state.chat={slot,text:txt,ts:Date.now()};
+if(gameMode==="online")await pushState();
+}
+function showBubbleDOM(slot,txt){
+const host=document.getElementById("pslot-"+slot);
+if(!host)return;
+const old=host.querySelector(".chat-bubble");
+if(old)old.remove();
+const b=document.createElement("div");
+b.className="chat-bubble";
+b.innerText=txt;
+host.appendChild(b);
+setTimeout(()=>{if(b.parentNode)b.remove()},3200);
+}
+
+// --- منطق بازی منچ ---
+function globalIdx(slot,relPos){
+if(relPos<0||relPos>50)return -1;
+return (SLOTS[slot].startIdx+relPos)%52;
+}
+
+function getValidMoves(slot,diceVal){
+const p=state.players[slot];
+const list=[];
+for(let i=0;i<4;i++){
+const pos=p.tokens[i];
+if(pos===56)continue;
+if(pos===-1){
+if(diceVal===6)list.push(i);
+}else if(pos+diceVal<=56){
+list.push(i);
+}
+}
+return list;
+}
+
+function isMyControl(){
+if(!state||state.status!=="play")return false;
+const p=state.players[state.turn];
+if(p.isBot)return false;
+if(gameMode==="online")return state.turn===mySlot;
+return true;
+}
+
+function onDiceClick(){
+if(!isMyControl()||state.phase!=="roll")return;
+doRoll();
+}
+
+function doRoll(){
+const btn=document.getElementById("dice-btn");
+btn.classList.add("roll","disabled");
+beep(540,.08,"triangle",0.12);
+setTimeout(async()=>{
+btn.classList.remove("roll");
+const val=Math.floor(Math.random()*6)+1;
+state.dice=val;
+const p=state.players[state.turn];
+if(val===6)state.sixCount++;
+else state.sixCount=0;
+
+if(state.sixCount>=3){
+state.sixCount=0;
+state.msg=p.name+" rolled three 6s!";
+beep(180,.2,"sawtooth",0.12);
+advanceTurn();
+if(gameMode==="online")await pushState();
+updateUI();
+return;
+}
+
+const moves=getValidMoves(state.turn,val);
+if(moves.length===0){
+state.msg=p.name+" rolled "+val+" (no moves)";
+beep(240,.14,"sine",0.09);
+updateUI();
+setTimeout(async()=>{
+advanceTurn();
+if(gameMode==="online")await pushState();
+updateUI();
+},700);
+}else{
+state.phase="move";
+state.msg=p.name+" rolled "+val;
+if(gameMode==="online")await pushState();
+updateUI();
+if(p.isBot){
+setTimeout(()=>botMove(moves),500);
+}else if(moves.length===1){
+setTimeout(()=>moveToken(moves[0]),380);
+}
+}
+},350);
+}
+
+function botMove(moves){
+if(!state||state.phase!=="move")return;
+let pick=moves[0],best=-999;
+const s=state.turn,d=state.dice;
+for(const idx of moves){
+let sc=0;
+const pos=state.players[s].tokens[idx];
+const np=pos===-1?0:pos+d;
+if(np===56)sc+=110;
+else if(pos===-1)sc+=55;
+else{
+const g=globalIdx(s,np);
+if(g>-1&&!SAFE_CELLS.includes(g)){
+for(let o=0;o<4;o++){
+if(o===s||!state.players[o].active)continue;
+if(state.players[o].tokens.some(tp=>globalIdx(o,tp)===g))sc+=130;
+}
+}
+sc+=np;
+}
+if(sc>best){best=sc;pick=idx}
+}
+moveToken(pick);
+}
+
+async function moveToken(idx){
+if(!state||state.phase!=="move")return;
+const s=state.turn;
+const p=state.players[s];
+const d=state.dice;
+if(!getValidMoves(s,d).includes(idx))return;
+
+const oldP=p.tokens[idx];
+const newP=oldP===-1?0:oldP+d;
+p.tokens[idx]=newP;
+
+let bonus=(d===6);
+let hit=false;
+
+if(newP===56){
+p.finished=p.tokens.filter(x=>x===56).length;
+bonus=true;
+beep(880,.18,"sine",0.15);
+if(p.finished>=state.goal){
+state.status="win";
+state.winner=s;
+state.msg="🏆 "+p.name+" wins!";
+if((gameMode==="bot"&&s===2)||(gameMode==="online"&&s===mySlot)){
+stars+=10;
+updStarUI();
+}
+if(gameMode==="online")await pushState();
+updateUI();
+return;
+}
+}else if(newP>=0&&newP<=50){
+const g=globalIdx(s,newP);
+if(!SAFE_CELLS.includes(g)){
+for(let o=0;o<4;o++){
+if(o===s||!state.players[o].active)continue;
+const op=state.players[o];
+for(let k=0;k<4;k++){
+if(globalIdx(o,op.tokens[k])===g){
+op.tokens[k]=-1;
+hit=true;
+bonus=true;
+}
+}
+}
+}
+}
+
+if(hit){
+beep(210,.22,"sawtooth",0.16);
+if(p.isBot)setTimeout(()=>showBubbleDOM(s,"Gotcha! 😂"),250);
+}else{
+beep(650,.08,"triangle",0.11);
+}
+
+if(bonus){
+state.phase="roll";
+state.dice=0;
+state.msg=p.name+" can roll again";
+}else{
+state.sixCount=0;
+advanceTurn();
+}
+
+turnDeadline=Date.now()+15000;
+if(gameMode==="online")await pushState();
+updateUI();
+}
+
+function advanceTurn(){
+state.phase="roll";
+state.dice=0;
+for(let step=1;step<=4;step++){
+const cand=(state.turn+step)%4;
+if(state.players[cand].active){
+state.turn=cand;
+break;
+}
+}
+state.msg=state.players[state.turn].name+" can roll";
+turnDeadline=Date.now()+15000;
+}
+
+function updateUI(){
+if(!state)return;
+const FACES=["🎲","⚀","⚁","⚂","⚃","⚄","⚅"];
+const btn=document.getElementById("dice-btn");
+btn.innerText=FACES[state.dice||0];
+
+for(let s=0;s<4;s++){
+const p=state.players[s];
+const box=document.getElementById("pslot-"+s);
+box.classList.toggle("off",!p.active);
+box.classList.toggle("active",p.active&&state.turn===s&&state.status==="play");
+document.getElementById("pname-"+s).innerText=p.active?p.name:SLOTS[s].name;
+const av=document.getElementById("pav-"+s);
+if(p.active&&p.photo)av.innerHTML=`<img src="${p.photo}" onerror="this.parentNode.innerText='${p.name.charAt(0)}'">`;
+else av.innerText=(p.active?p.name:SLOTS[s].name).charAt(0).toUpperCase();
+}
+
+if(state.chat&&state.chat.ts>lastChatTs){
+lastChatTs=state.chat.ts;
+showBubbleDOM(state.chat.slot,state.chat.text);
+}
+
+document.getElementById("status-txt").innerText=state.msg;
+movableTokens=(state.status==="play"&&state.phase==="move")?getValidMoves(state.turn,state.dice):[];
+const canAct=isMyControl();
+btn.classList.toggle("disabled",!(canAct&&state.phase==="roll"));
+btn.style.borderColor=SLOTS[state.turn].col;
+
+if(state.status==="win"){
+clearInterval(pollTimer);
+document.getElementById("win-txt").innerText=state.msg;
+document.getElementById("win-screen").classList.remove("hd");
+}else if(state.status==="play"&&state.players[state.turn].isBot&&state.phase==="roll"){
+setTimeout(doRoll,550);
+}
+}
+
+setInterval(()=>{
+if(!state||state.status!=="play")return;
+const rem=Math.max(0,turnDeadline-Date.now());
+const pct=Math.min(100,(rem/15000)*100);
+const bar=document.getElementById("tfill-"+state.turn);
+if(bar)bar.style.width=pct+"%";
+},250);
+
+function confirmExit(){
+if(!state){backToMenu();return}
+if(confirm("از بازی خارج می‌شوید؟"))backToMenu();
+}
+function backToMenu(){
+clearInterval(pollTimer);
+state=null;
+document.getElementById("win-screen").classList.add("hd");
+document.getElementById("lobby-screen").classList.add("hd");
+document.getElementById("menu-screen").classList.remove("hd");
+}
+function shareResult(){
+const txt=`🏆 در بازی «منچ پلاتو» کانال ${CHANNEL_ID} برنده شدم!\nتو هم بیا یه دست منچ بزنیم 👇`;
+const url=`https://ble.ir/share/url?url=${encodeURIComponent(BOT_LINK)}&text=${encodeURIComponent(txt)}`;
+if(window.Bale&&Bale.WebApp&&Bale.WebApp.openLink)Bale.WebApp.openLink(url);
+else window.open(url,"_blank");
+}
+
+// --- رسم دقیق تخته پلاتو روی Canvas ---
+const cv=document.getElementById("cv"),ctx=cv.getContext("2d");
+let BS=330,CELL=22,DPR=1;
+
+function resizeBoard(){
+const area=document.querySelector(".board-area");
+const maxS=Math.min(area.clientWidth-24,area.clientHeight-20,400);
+BS=Math.max(255,Math.floor(maxS/15)*15);
+CELL=BS/15;
+DPR=Math.min(2.5,window.devicePixelRatio||1);
+cv.width=Math.round(BS*DPR);
+cv.height=Math.round(BS*DPR);
+cv.style.width=BS+"px";
+cv.style.height=BS+"px";
+ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener("resize",resizeBoard);
+resizeBoard();
+
+function drawOutlineStar(cx,cy,r){
+ctx.save();
+ctx.translate(cx,cy);
+ctx.beginPath();
+for(let i=0;i<5;i++){
+const a1=(i*2*Math.PI/5)-Math.PI/2;
+const a2=a1+Math.PI/5;
+ctx.lineTo(Math.cos(a1)*r,Math.sin(a1)*r);
+ctx.lineTo(Math.cos(a2)*(r*0.44),Math.sin(a2)*(r*0.44));
+}
+ctx.closePath();
+ctx.strokeStyle="#6b7280";
+ctx.lineWidth=1.4;
+ctx.stroke();
+ctx.restore();
+}
+
+function drawEntryArrow(r,c,dir,col){
+const cx=(c+0.5)*CELL,cy=(r+0.5)*CELL;
+ctx.save();
+ctx.translate(cx,cy);
+const ang={right:0,down:Math.PI/2,left:Math.PI,up:-Math.PI/2}[dir];
+ctx.rotate(ang);
+ctx.strokeStyle=col;
+ctx.lineWidth=1.6;
+ctx.beginPath();
+ctx.moveTo(-CELL*0.26,-CELL*0.1);
+ctx.lineTo(CELL*0.04,-CELL*0.1);
+ctx.lineTo(CELL*0.04,-CELL*0.22);
+ctx.lineTo(CELL*0.28,0);
+ctx.lineTo(CELL*0.04,CELL*0.22);
+ctx.lineTo(CELL*0.04,CELL*0.1);
+ctx.lineTo(-CELL*0.26,CELL*0.1);
+ctx.closePath();
+ctx.stroke();
+ctx.restore();
+}
+
+function getTokenPos(slot,idx,pos){
+if(pos===-1){
+const [r,c]=YARD_SPOTS[slot][idx];
+return {x:(c+0.5)*CELL,y:(r+0.5)*CELL};
+}
+if(pos>=0&&pos<=50){
+const g=globalIdx(slot,pos);
+const [r,c]=MAIN_PATH[g];
+return {x:(c+0.5)*CELL,y:(r+0.5)*CELL};
+}
+const h=Math.min(5,pos-51);
+const [r,c]=HOME_PATHS[slot][h];
+return {x:(c+0.5)*CELL,y:(r+0.5)*CELL};
+}
+
+cv.addEventListener("pointerdown",e=>{
+if(!state||state.status!=="play"||state.phase!=="move"||!isMyControl())return;
+const rect=cv.getBoundingClientRect();
+const px=e.clientX-rect.left,py=e.clientY-rect.top;
+const p=state.players[state.turn];
+let bestIdx=-1,bestD=CELL*1.2;
+for(const idx of movableTokens){
+const pt=getTokenPos(state.turn,idx,p.tokens[idx]);
+const d=Math.hypot(px-pt.x,py-pt.y);
+if(d<bestD){bestD=d;bestIdx=idx}
+}
+if(bestIdx>-1)moveToken(bestIdx);
+});
+
+function drawBoard(now){
+requestAnimationFrame(drawBoard);
+const pulse=Math.sin(now*0.008);
+
+// پس‌زمینه سفید خانه‌ها
+ctx.fillStyle="#ffffff";
+ctx.fillRect(0,0,BS,BS);
+
+// ۴ حیاط گوشه با قاب داخلی تیره‌تر مطابق تصویر پلاتو[span_12](start_span)[span_12](end_span)
+const yards=[
+{r:0,c:0,s:0}, // زرد بالا-چپ
+{r:0,c:9,s:1}, // آبی بالا-راست
+{r:9,c:9,s:2}, // قرمز پایین-راست
+{r:9,c:0,s:3}  // سبز پایین-چپ
+];
+for(const y of yards){
+const sl=SLOTS[y.s];
+ctx.fillStyle=sl.col;
+ctx.fillRect(y.c*CELL,y.r*CELL,6*CELL,6*CELL);
+
+// کادر داخلی تیره‌تر حیاط[span_13](start_span)[span_13](end_span)
+ctx.fillStyle=sl.inner;
+ctx.beginPath();
+ctx.roundRect((y.c+1.15)*CELL,(y.r+1.15)*CELL,3.7*CELL,3.7*CELL,6);
+ctx.fill();
+
+// ۴ جایگاه دایره‌ای سفید داخل حیاط[span_14](start_span)[span_14](end_span)
+for(const [sr,sc] of YARD_SPOTS[y.s]){
+ctx.fillStyle="rgba(255,255,255,0.35)";
+ctx.beginPath();
+ctx.arc((sc+0.5)*CELL,(sr+0.5)*CELL,CELL*0.44,0,Math.PI*2);
+ctx.fill();
+}
+}
+
+// رنگ‌آمیزی مسیرهای منتهی به مرکز و خانه‌های شروع[span_15](start_span)[span_15](end_span)
+for(let s=0;s<4;s++){
+ctx.fillStyle=SLOTS[s].col;
+for(let k=0;k<5;k++){
+const [r,c]=HOME_PATHS[s][k];
+ctx.fillRect(c*CELL,r*CELL,CELL,CELL);
+}
+const [sr,sc]=MAIN_PATH[SLOTS[s].startIdx];
+ctx.fillRect(sc*CELL,sr*CELL,CELL,CELL);
+}
+
+// خطوط شبکه ظریف خانه‌ها[span_16](start_span)[span_16](end_span)
+ctx.strokeStyle="#e5e7eb";
+ctx.lineWidth=1;
+for(let r=0;r<15;r++){
+for(let c=0;c<15;c++){
+if((r<6&&c<6)||(r<6&&c>8)||(r>8&&c<6)||(r>8&&c>8)||(r>=6&&r<=8&&c>=6&&c<=8))continue;
+ctx.strokeRect(c*CELL,r*CELL,CELL,CELL);
+}
+}
+
+// خانه‌های امن ستاره‌دار توخالی مطابق تصویر[span_17](start_span)[span_17](end_span)
+for(const g of [8,21,34,47]){
+const [r,c]=MAIN_PATH[g];
+drawOutlineStar((c+0.5)*CELL,(r+0.5)*CELL,CELL*0.33);
+}
+
+// فلش‌های رنگی ورودی هر رنگ مطابق تصویر[span_18](start_span)[span_18](end_span)
+drawEntryArrow(7,0,"right",SLOTS[0].col); // زرد چپ
+drawEntryArrow(0,7,"down",SLOTS[1].col);  // آبی بالا
+drawEntryArrow(7,14,"left",SLOTS[2].col); // قرمز راست
+drawEntryArrow(14,7,"up",SLOTS[3].col);   // سبز پایین
+
+// ۴ مثلث خانه مرکز (۳×۳ وسط) مطابق تصویر[span_19](start_span)[span_19](end_span)
+const cx=7.5*CELL,cy=7.5*CELL;
+const centerTris=[
+{pts:[[6*CELL,6*CELL],[6*CELL,9*CELL],[cx,cy]],col:SLOTS[0].col}, // زرد چپ
+{pts:[[6*CELL,6*CELL],[9*CELL,6*CELL],[cx,cy]],col:SLOTS[1].col}, // آبی بالا
+{pts:[[9*CELL,6*CELL],[9*CELL,9*CELL],[cx,cy]],col:SLOTS[2].col}, // قرمز راست
+{pts:[[6*CELL,9*CELL],[9*CELL,9*CELL],[cx,cy]],col:SLOTS[3].col}  // سبز پایین
+];
+for(const t of centerTris){
+ctx.fillStyle=t.col;
+ctx.beginPath();
+ctx.moveTo(t.pts[0][0],t.pts[0][1]);
+ctx.lineTo(t.pts[1][0],t.pts[1][1]);
+ctx.lineTo(t.pts[2][0],t.pts[2][1]);
+ctx.closePath();
+ctx.fill();
+}
+
+// رسم مهره‌های سفید با حلقه رنگی سه‌بعدی پلاتو[span_20](start_span)[span_20](end_span)
+const occ={};
+for(let s=0;s<4;s++){
+// در منوی اولیه مهره‌ها در حیاط نمایش داده شوند
+const active=state?state.players[s].active:true;
+if(!active)continue;
+const tokens=state?state.players[s].tokens:[-1,-1,-1,-1];
+for(let i=0;i<4;i++){
+const pos=tokens[i];
+const pt=getTokenPos(s,i,pos);
+const key=Math.round(pt.x)+"_"+Math.round(pt.y);
+occ[key]=(occ[key]||0)+1;
+const stIdx=occ[key]-1;
+const ox=stIdx===0?0:(stIdx%2===1?-3.2:3.2);
+const oy=stIdx>1?-3.2:0;
+
+const isMov=(state&&s===state.turn&&movableTokens.includes(i)&&isMyControl());
+const rad=CELL*0.39+(isMov?pulse*1.8:0);
+const tx=pt.x+ox,ty=pt.y+oy;
+
+if(isMov){
+ctx.strokeStyle="#111827";
+ctx.lineWidth=2.8;
+ctx.beginPath();
+ctx.arc(tx,ty,rad+3.5,0,Math.PI*2);
+ctx.stroke();
+}
+
+// سایه سه‌بعدی زیر مهره[span_21](start_span)[span_21](end_span)
+ctx.fillStyle="rgba(0,0,0,0.38)";
+ctx.beginPath();
+ctx.arc(tx,ty+2.8,rad,0,Math.PI*2);
+ctx.fill();
+
+// بدنه سفید مهره[span_22](start_span)[span_22](end_span)
+ctx.fillStyle="#ffffff";
+ctx.beginPath();
+ctx.arc(tx,ty,rad,0,Math.PI*2);
+ctx.fill();
+
+// دایره رنگی وسط مهره[span_23](start_span)[span_23](end_span)
+ctx.fillStyle=SLOTS[s].ring;
+ctx.beginPath();
+ctx.arc(tx,ty,rad*0.54,0,Math.PI*2);
+ctx.fill();
+
+// افکت آیتم انتخابی فروشگاه
+if(curTheme===1){
+ctx.strokeStyle="#facc15";ctx.lineWidth=1.8;ctx.beginPath();ctx.arc(tx,ty,rad*0.85,0,Math.PI*2);ctx.stroke();
+}else if(curTheme===2){
+ctx.strokeStyle="#38bdf8";ctx.lineWidth=2;ctx.beginPath();ctx.arc(tx,ty,rad*0.9,0,Math.PI*2);ctx.stroke();
+}
+}
+}
+}
+requestAnimationFrame(drawBoard);
+
+if(startParam&&/^\d{4}$/.test(startParam)){
+joinOnlineRoom(startParam);
+}
+</script>
+</body>
+</html>
