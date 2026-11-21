@@ -471,6 +471,7 @@ const YARD_SPOTS=[
 
 const STAR_CELLS=[8,21,34,47];
 const SAFE_CELLS=[0,8,13,21,26,34,39,47];
+const STEP_DELAY_MS=260;
 
 function isSafeGlobalCell(g){
 if(g<0)return true;
@@ -485,7 +486,6 @@ let isAnimating=false;
 let animHopOffset=0,animatingSlot=-1,animatingIdx=-1;
 let isPushing=false,pendingPush=false;
 
-// پاک کردن دائمی حافظه بازی قبلی تا هنگام بستن و باز کردن مجدد مینی‌اپ، همیشه از منوی اصلی شروع شود
 localStorage.removeItem("pl_active_room");
 
 function setSpeed(m){
@@ -499,7 +499,8 @@ const goal=speedMode==="fast"?2:4;
 const players=[0,1,2,3].map(s=>{
 const found=plist.find(x=>x.slot===s);
 const active=!!found;
-const tokens=active?(speedMode==="fast"?[0,-1,-1,-1]:[-1,-1,-1,-1]):[-1,-1,-1,-1];
+// اول بازی هر ۴ مهره در خانه شروع بیرون باشند تا با تاس ۶ یا ۱ وارد زمین شوند
+const tokens=[-1,-1,-1,-1];
 return {
 slot:s,
 active,
@@ -525,7 +526,7 @@ sixCount:0,
 winner:-1,
 lastMove:null,
 chat:null,
-msg:"نوبت "+players[first].name+" است؛ تاس بینداز!",
+msg:"نوبت "+players[first].name+" است؛ برای شروع تاس ۶ یا ۱ بیاور!",
 players
 };
 }
@@ -574,7 +575,6 @@ if(!d||!d.players||d.status==="win"||d.status==="closed"){
 if(!fromInviteLink)toast("این اتاق بسته شده یا به پایان رسیده است!");
 return;
 }
-// اگر کاربر با همان لینک دعوت قدیمی دوباره وارد ربات شده و بازی قبلاً شروع یا تمام شده، وارد بازی قدیمی نشود و منو باز بماند
 if(fromInviteLink&&d.status!=="lobby"){
 return;
 }
@@ -595,7 +595,7 @@ d.players[free].active=true;
 d.players[free].id=usr.id;
 d.players[free].name=usr.name;
 d.players[free].photo=usr.photo;
-d.players[free].tokens=d.speedMode==="fast"?[0,-1,-1,-1]:[-1,-1,-1,-1];
+d.players[free].tokens=[-1,-1,-1,-1];
 state=d;
 await pushState();
 }
@@ -655,7 +655,7 @@ if(!state||mySlot!==2)return;
 state.status="play";
 state.turn=2;
 state.phase="roll";
-state.msg="نوبت "+state.players[2].name+" است؛ تاس بینداز!";
+state.msg="نوبت "+state.players[2].name+" است؛ برای شروع تاس ۶ یا ۱ بیاور!";
 await pushState();
 document.getElementById("lobby-screen").classList.add("hd");
 turnDeadline=Date.now()+15000;
@@ -700,10 +700,10 @@ function nextStep(){
 if(stepIndex<steps.length){
 state.players[mv.slot].tokens[mv.idx]=steps[stepIndex];
 animHopOffset=1;
-setTimeout(()=>{animHopOffset=0},90);
+setTimeout(()=>{animHopOffset=0},120);
 playStepPop(stepIndex);
 stepIndex++;
-setTimeout(nextStep,165);
+setTimeout(nextStep,STEP_DELAY_MS);
 }else{
 animatingSlot=-1;
 animatingIdx=-1;
@@ -811,7 +811,7 @@ host.appendChild(b);
 setTimeout(()=>{if(b.parentNode)b.remove()},3200);
 }
 
-// --- منطق بازی منچ ---
+// --- منطق بازی منچ (شروع با ۶ یا ۱ + هر ۴ مهره بیرون) ---
 function globalIdx(slot,relPos){
 if(relPos<0||relPos>50)return -1;
 return (SLOTS[slot].startIdx+relPos)%52;
@@ -824,7 +824,8 @@ for(let i=0;i<4;i++){
 const pos=p.tokens[i];
 if(pos===56)continue;
 if(pos===-1){
-if(diceVal===6)list.push(i);
+// بازیکن با تاس ۶ یا تاس ۱ می‌تواند مهره را وارد بازی کند
+if(diceVal===6||diceVal===1)list.push(i);
 }else if(pos+diceVal<=56){
 list.push(i);
 }
@@ -892,20 +893,23 @@ advanceTurn();
 isAnimating=false;
 if(gameMode==="online")await pushState();
 updateUI();
-},550);
+},650);
 return;
 }
 
 const moves=getValidMoves(state.turn,val);
 if(moves.length===0){
-state.msg=p.name+" عدد "+val+" آورد ولی حرکتی ندارد!";
+const allOut=p.tokens.every(t=>t===-1);
+state.msg=allOut
+?p.name+" عدد "+val+" آورد (برای شروع ۶ یا ۱ لازم است)"
+:p.name+" عدد "+val+" آورد ولی حرکتی ندارد!";
 updateUI();
 setTimeout(async()=>{
 advanceTurn();
 isAnimating=false;
 if(gameMode==="online")await pushState();
 updateUI();
-},580);
+},680);
 }else{
 state.phase="move";
 state.msg=p.name+" عدد "+val+" آورد؛ مهره را انتخاب کن!";
@@ -913,9 +917,9 @@ isAnimating=false;
 if(gameMode==="online")pushState();
 updateUI();
 if(p.isBot){
-setTimeout(()=>botMove(moves),350);
+setTimeout(()=>botMove(moves),400);
 }else if(moves.length===1){
-setTimeout(()=>moveToken(moves[0]),240);
+setTimeout(()=>moveToken(moves[0]),280);
 }
 }
 }
@@ -965,15 +969,15 @@ let stepIndex=0;
 function stepNext(){
 p.tokens[idx]=steps[stepIndex];
 animHopOffset=1;
-setTimeout(()=>{animHopOffset=0},90);
+setTimeout(()=>{animHopOffset=0},120);
 playStepPop(stepIndex);
 stepIndex++;
 if(stepIndex<steps.length){
-setTimeout(stepNext,165);
+setTimeout(stepNext,STEP_DELAY_MS);
 }else{
 animatingSlot=-1;
 animatingIdx=-1;
-setTimeout(()=>finalizeMove(s,idx,oldP,targetP,d),110);
+setTimeout(()=>finalizeMove(s,idx,oldP,targetP,d),130);
 }
 }
 stepNext();
@@ -1100,7 +1104,7 @@ clearInterval(pollTimer);
 document.getElementById("win-txt").innerText=state.msg;
 document.getElementById("win-screen").classList.remove("hd");
 }else if(state.status==="play"&&state.players[state.turn].isBot&&state.phase==="roll"&&!isAnimating){
-setTimeout(doRoll,450);
+setTimeout(doRoll,500);
 }
 }
 
@@ -1155,7 +1159,7 @@ ctx.setTransform(DPR,0,0,DPR,0,0);
 window.addEventListener("resize",resizeBoard);
 resizeBoard();
 
-function drawOutlineStar(cx,cy,r){
+function drawOutlineStar(cx,cy,r,occupied=false){
 ctx.save();
 ctx.translate(cx,cy);
 ctx.beginPath();
@@ -1166,8 +1170,8 @@ ctx.lineTo(Math.cos(a1)*r,Math.sin(a1)*r);
 ctx.lineTo(Math.cos(a2)*(r*0.44),Math.sin(a2)*(r*0.44));
 }
 ctx.closePath();
-ctx.strokeStyle="#6b7280";
-ctx.lineWidth=1.4;
+ctx.strokeStyle=occupied?"#d97706":"#6b7280";
+ctx.lineWidth=occupied?1.7:1.4;
 ctx.stroke();
 ctx.restore();
 }
@@ -1263,6 +1267,29 @@ const [sr,sc]=MAIN_PATH[SLOTS[s].startIdx];
 ctx.fillRect(sc*CELL,sr*CELL,CELL,CELL);
 }
 
+// بررسی اینکه آیا مهره‌ای روی هر یک از خانه‌های ستاره ایستاده تا رنگ آن خانه به کرمی تغییر کند
+const occupiedStars=new Set();
+if(state){
+for(let s=0;s<4;s++){
+if(!state.players[s].active)continue;
+for(let i=0;i<4;i++){
+const pos=state.players[s].tokens[i];
+if(pos>=0&&pos<=50){
+const g=globalIdx(s,pos);
+if(STAR_CELLS.includes(g))occupiedStars.add(g);
+}
+}
+}
+}
+
+for(const g of STAR_CELLS){
+if(occupiedStars.has(g)){
+const [r,c]=MAIN_PATH[g];
+ctx.fillStyle="#fef3c7";
+ctx.fillRect(c*CELL,r*CELL,CELL,CELL);
+}
+}
+
 ctx.strokeStyle="#e5e7eb";
 ctx.lineWidth=1;
 for(let r=0;r<15;r++){
@@ -1274,7 +1301,7 @@ ctx.strokeRect(c*CELL,r*CELL,CELL,CELL);
 
 for(const g of STAR_CELLS){
 const [r,c]=MAIN_PATH[g];
-drawOutlineStar((c+0.5)*CELL,(r+0.5)*CELL,CELL*0.33);
+drawOutlineStar((c+0.5)*CELL,(r+0.5)*CELL,CELL*0.33,occupiedStars.has(g));
 }
 
 drawEntryArrow(7,0,"right",SLOTS[0].col);
@@ -1370,7 +1397,6 @@ ctx.strokeStyle="#38bdf8";ctx.lineWidth=2;ctx.beginPath();ctx.arc(tx,ty,rad*0.9,
 }
 requestAnimationFrame(drawBoard);
 
-// فقط در صورتی وارد اتاق می‌شود که کاربر روی لینک دعوت یک اتاق در انتظار (lobby) کلیک کرده باشد
 if(startParam&&/^\d{4}$/.test(startParam)){
 joinOnlineRoom(startParam,true);
 }
